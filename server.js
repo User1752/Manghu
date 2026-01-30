@@ -4,6 +4,7 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 const crypto = require("crypto");
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -407,6 +408,20 @@ app.post("/api/source/:id/pages", async (req, res) => {
     const mod = loadSourceFromFile(sid);
     const result = await mod.pages(String(chapterId));
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// Novo endpoint para ler o conteúdo de uma URL enviada pelo usuário
+app.post("/api/fetch-url", async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (typeof url !== "string" || !/^https?:\/\//.test(url)) {
+      return res.status(400).json({ error: "URL inválida" });
+    }
+    const text = await fetchText(url);
+    res.json({ content: text });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });
   }
