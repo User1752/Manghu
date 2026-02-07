@@ -1,0 +1,5 @@
+- Corrigir o webtoonmode
+- Deixar os Filtros mais bonitos
+- Adicionar mais sources
+- Certificar que os mangas estao completos
+- 

@@ -9,10 +9,11 @@
 <body>
   <header class="topbar">
     <div class="container-top">
-      <div class="brand">🎌 Manghu</div>
+      <div class="brand">Manghu</div>
       <nav class="nav-menu">
         <a href="#" class="nav-link active">Home</a>
         <a href="#" class="nav-link">Biblioteca</a>
+        <button id="btn-settings" class="btn-settings-header">Configurações</button>
       </nav>
     </div>
   </header>
@@ -38,23 +39,22 @@
         <div class="filters-container">
           <div class="filters-header">
             <h3>Filtros Avançados</h3>
-            <button id="btn-settings" class="btn-settings-inline">⚙️</button>
           </div>
           <div class="filters-grid">
             <div class="filter-group">
-              <label>🎭 Gêneros</label>
+              <label>Gêneros</label>
               <div id="genreFilter" class="genre-filter">
                 <div class="genre-chips"></div>
               </div>
             </div>
 
             <div class="filter-group">
-              <label>📊 Status</label>
+              <label>Status</label>
               <div class="status-filter"></div>
             </div>
 
             <div class="filter-group">
-              <label>📈 Ordenar por</label>
+              <label>Ordenar por</label>
               <select id="sortFilter" class="form-control">
                 <option value="relevance">Mais Relevantes</option>
                 <option value="trending">Trending</option>
@@ -63,6 +63,13 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="popular-section">
+        <div class="popular-header">
+          <h3>Mangás mais populares do dia</h3>
+        </div>
+        <div id="popularRow" class="popular-row"></div>
       </div>
 
       <!-- Results Grid (AsuraScans style) -->
@@ -85,7 +92,7 @@
     <section id="view-library" class="view hidden">
       <div class="library-container">
         <div class="library-header">
-          <h2>📚 Minha Biblioteca</h2>
+          <h2>Minha Biblioteca</h2>
           <div class="library-stats">
             <span id="libraryCount">0 mangás</span>
           </div>
@@ -111,13 +118,13 @@
 
     <!-- Context Menu -->
     <div id="contextMenu" class="context-menu hidden">
-      <button class="context-item" data-action="mark-read">✓ Marcar como Lido</button>
-      <button class="context-item" data-action="mark-unread">○ Marcar como Não Lido</button>
+      <button class="context-item" data-action="mark-read">Marcar como Lido</button>
+      <button class="context-item" data-action="mark-unread">Marcar como Não Lido</button>
       <div class="context-divider"></div>
-      <button class="context-item" data-action="download">⬇️ Baixar</button>
+      <button class="context-item" data-action="download">Baixar</button>
       <div class="context-divider"></div>
-      <button class="context-item" data-action="tag">🏷️ Adicionar Tag</button>
-      <button class="context-item" data-action="remove">🗑️ Remover</button>
+      <button class="context-item" data-action="tag">Adicionar Tag</button>
+      <button class="context-item" data-action="remove">Remover</button>
     </div>
   </main>
 

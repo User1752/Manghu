@@ -44,7 +44,10 @@ const state = {
     panWideImages: false
   },
   libraryTags: {}, // Novo: armazenar tags por manga
-  selectedMangaForContext: null // Novo: para context menu
+  selectedMangaForContext: null, // Novo: para context menu
+  popularToday: [],
+  lastReadPages: {},
+  lastReadChapter: {}
 };
 
 // ============================================================================
@@ -76,6 +79,12 @@ function loadSettings() {
     if (tags) {
       state.libraryTags = JSON.parse(tags);
     }
+    const progress = localStorage.getItem("manghuReadingProgress");
+    if (progress) {
+      const parsed = JSON.parse(progress);
+      state.lastReadPages = parsed.pages || {};
+      state.lastReadChapter = parsed.chapters || {};
+    }
   } catch (e) {
     console.warn("Erro ao carregar configurações:", e);
   }
@@ -85,6 +94,10 @@ function saveSettings() {
   localStorage.setItem("manghuSettings", JSON.stringify(state.settings));
   localStorage.setItem("manghuReadChapters", JSON.stringify([...state.readChapters]));
   localStorage.setItem("manghuLibraryTags", JSON.stringify(state.libraryTags));
+  localStorage.setItem("manghuReadingProgress", JSON.stringify({
+    pages: state.lastReadPages,
+    chapters: state.lastReadChapter
+  }));
 }
 
 function markChapterAsRead(mangaId, chapterId) {
@@ -96,6 +109,13 @@ function markChapterAsRead(mangaId, chapterId) {
 function isChapterRead(mangaId, chapterId) {
   const key = `${mangaId}:${chapterId}`;
   return state.readChapters.has(key);
+}
+
+function updateReadingProgress(mangaId, chapterId, pageIndex) {
+  if (!mangaId || !chapterId) return;
+  state.lastReadPages[`${mangaId}:${chapterId}`] = pageIndex;
+  state.lastReadChapter[mangaId] = chapterId;
+  saveSettings();
 }
 
 // ============================================================================
@@ -111,6 +131,7 @@ async function refreshState() {
     state.history = libData.history || [];
     
     renderSourceSelect();
+    await loadPopularToday();
     renderLibrary();
   } catch (e) {
     console.error("Erro ao carregar estado:", e);
@@ -141,7 +162,59 @@ function renderSourceSelect() {
     state.currentSourceId = installed[0].id;
   }
   sel.value = state.currentSourceId;
-  sel.onchange = () => { state.currentSourceId = sel.value; };
+  sel.onchange = async () => {
+    state.currentSourceId = sel.value;
+    await loadPopularToday();
+  };
+}
+
+// ============================================================================
+// POPULAR TODAY
+// ============================================================================
+async function loadPopularToday() {
+  const row = $("popularRow");
+  if (!row || !state.currentSourceId) return;
+
+  row.innerHTML = `<div class="muted">Carregando populares do dia...</div>`;
+
+  try {
+    if (state.currentSourceId !== "mangadex") {
+      row.innerHTML = `<div class="muted">Populares do dia indisponível para esta fonte.</div>`;
+      return;
+    }
+
+    const result = await api(`/api/source/${state.currentSourceId}/search`, {
+      method: "POST",
+      body: JSON.stringify({ query: "*", page: 1 })
+    });
+
+    const list = (result.results || []).slice(0, 10);
+    if (list.length === 0) {
+      row.innerHTML = `<div class="muted">Sem populares do dia.</div>`;
+      return;
+    }
+
+    row.innerHTML = list.map(m => `
+      <div class="manga-card" data-manga-id="${escapeHtml(m.id)}">
+        <div class="manga-card-cover">
+          ${m.cover ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}">` : '<div class="no-cover">?</div>'}
+        </div>
+        <div class="manga-card-info">
+          <h3 class="manga-card-title">${escapeHtml(m.title)}</h3>
+          <p class="manga-card-author">${escapeHtml(m.author || "")}</p>
+        </div>
+      </div>
+    `).join("");
+
+    row.querySelectorAll("[data-manga-id]").forEach(el => {
+      el.onclick = async () => {
+        const mangaId = el.dataset.mangaId;
+        await loadMangaDetails(mangaId);
+      };
+    });
+  } catch (e) {
+    row.innerHTML = `<div class="muted">Erro ao carregar populares do dia.</div>`;
+  }
 }
 
 // ============================================================================
@@ -198,9 +271,23 @@ function renderLibrary() {
         e.stopPropagation();
         const [mangaId, sourceId] = el.dataset.mangaId.split("_");
         state.currentSourceId = sourceId;
-        const mangaJson = JSON.parse(el.dataset.mangaJson);
         state.currentManga = mangaJson;
+
+        const historyEntry = state.history.find(h => h.id === mangaId && h.sourceId === sourceId);
+        const chapterId = historyEntry?.chapterId || state.lastReadChapter[mangaId] || null;
+        const pageKey = chapterId ? `${mangaId}:${chapterId}` : null;
+        const pageIndex = pageKey && Number.isInteger(state.lastReadPages[pageKey]) ? state.lastReadPages[pageKey] : 0;
+
         await loadChapters();
+
+        if (chapterId) {
+          const chapterIndex = state.allChapters.findIndex(c => c.id === chapterId);
+          if (chapterIndex >= 0) {
+            await loadChapter(chapterId, state.allChapters[chapterIndex].name || `Capítulo ${state.allChapters[chapterIndex].chapter || chapterIndex + 1}`, chapterIndex, pageIndex);
+            return;
+          }
+        }
+
         setView("manga-details");
       };
     }
@@ -476,7 +563,7 @@ async function loadChapters() {
   }
 }
 
-async function loadChapter(chapterId, chapterName, chapterIndex) {
+async function loadChapter(chapterId, chapterName, chapterIndex, startPageIndex = 0) {
   $("searchStatus").textContent = "Carregando capítulo...";
   try {
     const result = await api(`/api/source/${state.currentSourceId}/pages`, {
@@ -488,7 +575,9 @@ async function loadChapter(chapterId, chapterName, chapterIndex) {
     state.currentChapter.name = chapterName;
     state.currentChapter.id = chapterId;
     state.currentChapterIndex = chapterIndex;
-    state.currentPageIndex = 0;
+
+    const maxIndex = Math.max((state.currentChapter.pages?.length || 1) - 1, 0);
+    state.currentPageIndex = Math.min(Math.max(startPageIndex, 0), maxIndex);
 
     markChapterAsRead(state.currentManga.id, chapterId);
 
@@ -600,6 +689,7 @@ function renderPage() {
     $("pageCounter").textContent = `Modo Webtoon (${pages.length} páginas)`;
     $("prevPage").style.display = "none";
     $("nextPage").style.display = "none";
+    updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, 0);
   } else {
     if (idx < 0 || idx >= pages.length) return;
 
@@ -653,6 +743,7 @@ function renderPage() {
     $("nextPage").disabled = idx === pages.length - 1;
     $("prevPage").style.display = "block";
     $("nextPage").style.display = "block";
+    updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, idx);
   }
 }
 
