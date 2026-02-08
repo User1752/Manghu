@@ -18,7 +18,7 @@
         <a href="#" class="nav-link" id="nav-advanced-search">Procura Avançada</a>
       </nav>
       <div class="sidebar-footer">
-        <button id="btn-settings-sidebar" class="btn-settings-sidebar">Configurações</button>
+        <button id="btn-settings" class="btn-settings-sidebar">Configurações</button>
       </div>
     </aside>
 
@@ -51,7 +51,7 @@
             </div>
           </div>
 
-          <!-- Statistics Section -->
+          <!-- Statistics Section (Future) -->
           <div class="stats-section">
             <div class="stat-card">
               <div class="stat-number" id="statTotalLibrary">0</div>
@@ -96,7 +96,7 @@
           </div>
         </section>
 
-        <!-- Manga Details Page -->
+        <!-- Manga Details Page (Full Screen) -->
         <section id="view-manga-details" class="view hidden">
           <div class="manga-page">
             <button id="backBtn" class="btn-back">← Voltar</button>
@@ -116,9 +116,34 @@
               </div>
             </div>
 
-            <div class="library-grid" id="library-grid"></div>
+            <div class="library-grid" id="library"></div>
           </div>
         </section>
+
+        <!-- Reader -->
+        <div id="reader" class="reader hidden">
+          <div class="reader-header">
+            <button id="closeReader" class="btn-close">✕</button>
+            <div id="readerTitle" class="reader-title"></div>
+            <div class="reader-nav">
+              <button id="prevPage" class="btn-nav">◀ Anterior</button>
+              <span id="pageCounter" class="page-info"></span>
+              <button id="nextPage" class="btn-nav">Próxima ▶</button>
+            </div>
+          </div>
+          <div id="pageWrap" class="reader-content"></div>
+        </div>
+
+        <!-- Context Menu -->
+        <div id="contextMenu" class="context-menu hidden">
+          <button class="context-item" data-action="mark-read">Marcar como Lido</button>
+          <button class="context-item" data-action="mark-unread">Marcar como Não Lido</button>
+          <div class="context-divider"></div>
+          <button class="context-item" data-action="download">Baixar</button>
+          <div class="context-divider"></div>
+          <button class="context-item" data-action="tag">Adicionar Tag</button>
+          <button class="context-item" data-action="remove">Remover</button>
+        </div>
 
         <!-- Advanced Search View -->
         <section id="view-advanced-search" class="view hidden">
@@ -295,6 +320,45 @@
             </div>
           </div>
         </section>
+
+        <!-- Library View -->
+        <section id="view-library" class="view hidden">
+          <div class="library-container">
+            <div class="library-header">
+              <h2>Minha Biblioteca</h2>
+              <div class="library-stats">
+                <span id="libraryCount">0 mangás</span>
+              </div>
+            </div>
+
+            <div class="library-grid" id="library"></div>
+          </div>
+        </section>
+
+        <!-- Reader -->
+        <div id="reader" class="reader hidden">
+          <div class="reader-header">
+            <button id="closeReader" class="btn-close">✕</button>
+            <div id="readerTitle" class="reader-title"></div>
+            <div class="reader-nav">
+              <button id="prevPage" class="btn-nav">◀ Anterior</button>
+              <span id="pageCounter" class="page-info"></span>
+              <button id="nextPage" class="btn-nav">Próxima ▶</button>
+            </div>
+          </div>
+          <div id="pageWrap" class="reader-content"></div>
+        </div>
+
+        <!-- Context Menu -->
+        <div id="contextMenu" class="context-menu hidden">
+          <button class="context-item" data-action="mark-read">Marcar como Lido</button>
+          <button class="context-item" data-action="mark-unread">Marcar como Não Lido</button>
+          <div class="context-divider"></div>
+          <button class="context-item" data-action="download">Baixar</button>
+          <div class="context-divider"></div>
+          <button class="context-item" data-action="tag">Adicionar Tag</button>
+          <button class="context-item" data-action="remove">Remover</button>
+        </div>
       </main>
 
       <footer class="footer">
@@ -302,22 +366,6 @@
           <p>&copy; 2026 Manghu. Todos os direitos reservados.</p>
         </div>
       </footer>
-    </div>
-  </div>
-
-  <!-- Reader (fora do main-container) -->
-  <div id="reader" class="reader hidden">
-    <div class="reader-header">
-      <button id="closeReader" class="btn-close">✕</button>
-      <div id="readerTitle" class="reader-title"></div>
-      <div class="reader-nav">
-        <button id="prevPage" class="btn-nav">◀ Anterior</button>
-        <span id="pageCounter" class="page-info"></span>
-        <button id="nextPage" class="btn-nav">Próxima ▶</button>
-      </div>
-    </div>
-    <div class="reader-content">
-      <div id="pageWrap" class="page-wrap"></div>
     </div>
   </div>
 
