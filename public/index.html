@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -14,18 +14,18 @@
       <div class="sidebar-header">Menu</div>
       <nav class="sidebar-nav">
         <a href="#" class="nav-link active">Home</a>
-        <a href="#" class="nav-link">Biblioteca</a>
-        <a href="#" class="nav-link" id="nav-advanced-search">Procura Avançada</a>
+        <a href="#" class="nav-link">Library</a>
+        <a href="#" class="nav-link" id="nav-advanced-search">Advanced Search</a>
       </nav>
       <div class="sidebar-footer">
-        <button id="btn-settings" class="btn-settings-sidebar">Configurações</button>
+        <button id="btn-settings" class="btn-settings-sidebar">Settings</button>
       </div>
     </aside>
 
     <div class="app-content">
       <header class="topbar">
         <div class="container-top">
-          <button id="sidebarToggle" class="btn-sidebar-toggle" aria-label="Abrir menu">☰</button>
+          <button id="sidebarToggle" class="btn-sidebar-toggle" aria-label="Open menu">☰</button>
           <div class="brand">Manghu</div>
         </div>
       </header>
@@ -34,42 +34,42 @@
         <!-- Discover View -->
         <section id="view-discover" class="view">
           <div class="home-hero">
-            <h1>Bem-vindo ao Manghu</h1>
-            <p>Pesquisa rápida, filtros avançados e leitura confortável.</p>
+            <h1>Welcome to Manghu</h1>
+            <p>Quick search, advanced filters, and comfortable reading.</p>
           </div>
 
           <!-- Search Section -->
           <div class="search-section">
             <div class="search-container">
-              <h2>Procurar Mangá</h2>
+              <h2>Search Manga</h2>
               <div class="search-form">
                 <select id="sourceSelect" class="form-control"></select>
-                <input id="searchInput" class="form-control" placeholder="Digite o nome do manga..." />
-                <button id="searchBtn" class="btn-search">Pesquisar</button>
+                <input id="searchInput" class="form-control" placeholder="Enter manga title..." />
+                <button id="searchBtn" class="btn-search">Search</button>
               </div>
               <div id="searchStatus" class="search-status"></div>
             </div>
           </div>
 
-          <!-- Statistics Section (Future) -->
+          <!-- Statistics Section -->
           <div class="stats-section">
             <div class="stat-card">
               <div class="stat-number" id="statTotalLibrary">0</div>
-              <div class="stat-label">Mangás na Biblioteca</div>
+              <div class="stat-label">Manga in Library</div>
             </div>
             <div class="stat-card">
               <div class="stat-number" id="statCompleted">0</div>
-              <div class="stat-label">Mangás Completos</div>
+              <div class="stat-label">Completed Manga</div>
             </div>
             <div class="stat-card">
               <div class="stat-number" id="statChaptersRead">0</div>
-              <div class="stat-label">Capítulos Lidos</div>
+              <div class="stat-label">Chapters Read</div>
             </div>
           </div>
 
           <div class="popular-section">
             <div class="popular-header">
-              <h3>Mangás mais populares do dia</h3>
+              <h3>Most Popular Today</h3>
             </div>
             <div id="popularRow" class="popular-row"></div>
           </div>
@@ -77,7 +77,7 @@
           <!-- Recently Added Section -->
           <div class="recent-section">
             <div class="section-header">
-              <h3>Adicionados Recentemente</h3>
+              <h3>Recently Added</h3>
             </div>
             <div id="recentlyAddedRow" class="results-grid"></div>
           </div>
@@ -85,7 +85,7 @@
           <!-- Latest Updates Section -->
           <div class="latest-section">
             <div class="section-header">
-              <h3>Mais Atualizados</h3>
+              <h3>Latest Updates</h3>
             </div>
             <div id="latestUpdatesRow" class="results-grid"></div>
           </div>
@@ -96,10 +96,10 @@
           </div>
         </section>
 
-        <!-- Manga Details Page (Full Screen) -->
+        <!-- Manga Details Page -->
         <section id="view-manga-details" class="view hidden">
           <div class="manga-page">
-            <button id="backBtn" class="btn-back">← Voltar</button>
+            <button id="backBtn" class="btn-back">← Back</button>
             
             <div id="details" class="manga-detail-section"></div>
             <div id="chapters" class="chapters-section"></div>
@@ -110,9 +110,9 @@
         <section id="view-library" class="view hidden">
           <div class="library-container">
             <div class="library-header">
-              <h2>Minha Biblioteca</h2>
+              <h2>My Library</h2>
               <div class="library-stats">
-                <span id="libraryCount">0 mangás</span>
+                <span id="libraryCount">0 manga</span>
               </div>
             </div>
 
@@ -126,9 +126,9 @@
             <button id="closeReader" class="btn-close">✕</button>
             <div id="readerTitle" class="reader-title"></div>
             <div class="reader-nav">
-              <button id="prevPage" class="btn-nav">◀ Anterior</button>
+              <button id="prevPage" class="btn-nav">◀ Previous</button>
               <span id="pageCounter" class="page-info"></span>
-              <button id="nextPage" class="btn-nav">Próxima ▶</button>
+              <button id="nextPage" class="btn-nav">Next ▶</button>
             </div>
           </div>
           <div id="pageWrap" class="reader-content"></div>
@@ -136,28 +136,28 @@
 
         <!-- Context Menu -->
         <div id="contextMenu" class="context-menu hidden">
-          <button class="context-item" data-action="mark-read">Marcar como Lido</button>
-          <button class="context-item" data-action="mark-unread">Marcar como Não Lido</button>
+          <button class="context-item" data-action="mark-read">Mark as Read</button>
+          <button class="context-item" data-action="mark-unread">Mark as Unread</button>
           <div class="context-divider"></div>
-          <button class="context-item" data-action="download">Baixar</button>
+          <button class="context-item" data-action="download">Download</button>
           <div class="context-divider"></div>
-          <button class="context-item" data-action="tag">Adicionar Tag</button>
-          <button class="context-item" data-action="remove">Remover</button>
+          <button class="context-item" data-action="tag">Add Tag</button>
+          <button class="context-item" data-action="remove">Remove</button>
         </div>
 
         <!-- Advanced Search View -->
         <section id="view-advanced-search" class="view hidden">
           <div class="advanced-search-page">
-            <h1 class="page-title">Procura Avançada</h1>
+            <h1 class="page-title">Advanced Search</h1>
 
             <!-- Search Bar -->
             <div class="search-section">
               <div class="search-container">
                 <div class="search-form">
                   <select id="advancedSourceSelect" class="form-control"></select>
-                  <input id="advancedSearchInput" class="form-control" placeholder="Digite o nome do manga..." />
-                  <button id="advancedSearchBtn" class="btn-search">Pesquisar</button>
-                  <button id="randomMangaBtn" class="btn-random">🎲 Aleatório</button>
+                  <input id="advancedSearchInput" class="form-control" placeholder="Enter manga title..." />
+                  <button id="advancedSearchBtn" class="btn-search">Search</button>
+                  <button id="randomMangaBtn" class="btn-random">🎲 Random</button>
                 </div>
               </div>
             </div>
@@ -166,7 +166,7 @@
             <div class="advanced-filters-section">
               <!-- Order By -->
               <div class="filter-group">
-                <label>Ordenar por</label>
+                <label>Sort by</label>
                 <select id="advancedOrderBy" class="form-control">
                   <option value="relevance">Best Match</option>
                   <option value="latestUploadedChapter">Latest Upload</option>
@@ -186,23 +186,23 @@
 
               <!-- Publication Status -->
               <div class="filter-group">
-                <label>Estado da Publicação</label>
+                <label>Publication Status</label>
                 <div class="status-filter">
                   <label class="filter-checkbox">
                     <input type="checkbox" value="ongoing" class="advanced-status-check">
-                    <span>📖 Em Publicação</span>
+                    <span>📖 Ongoing</span>
                   </label>
                   <label class="filter-checkbox">
                     <input type="checkbox" value="completed" class="advanced-status-check">
-                    <span>✅ Completo</span>
+                    <span>✅ Completed</span>
                   </label>
                   <label class="filter-checkbox">
                     <input type="checkbox" value="hiatus" class="advanced-status-check">
-                    <span>⏸️ Hiato</span>
+                    <span>⏸️ Hiatus</span>
                   </label>
                   <label class="filter-checkbox">
                     <input type="checkbox" value="cancelled" class="advanced-status-check">
-                    <span>❌ Cancelado</span>
+                    <span>❌ Cancelled</span>
                   </label>
                 </div>
               </div>
@@ -318,52 +318,16 @@
             <div class="results-section">
               <div id="advancedResults" class="results-grid"></div>
             </div>
+
+            <!-- Pagination -->
+            <div id="advancedSearchPagination" class="pagination-container"></div>
           </div>
         </section>
-
-        <!-- Library View -->
-        <section id="view-library" class="view hidden">
-          <div class="library-container">
-            <div class="library-header">
-              <h2>Minha Biblioteca</h2>
-              <div class="library-stats">
-                <span id="libraryCount">0 mangás</span>
-              </div>
-            </div>
-
-            <div class="library-grid" id="library"></div>
-          </div>
-        </section>
-
-        <!-- Reader -->
-        <div id="reader" class="reader hidden">
-          <div class="reader-header">
-            <button id="closeReader" class="btn-close">✕</button>
-            <div id="readerTitle" class="reader-title"></div>
-            <div class="reader-nav">
-              <button id="prevPage" class="btn-nav">◀ Anterior</button>
-              <span id="pageCounter" class="page-info"></span>
-              <button id="nextPage" class="btn-nav">Próxima ▶</button>
-            </div>
-          </div>
-          <div id="pageWrap" class="reader-content"></div>
-        </div>
-
-        <!-- Context Menu -->
-        <div id="contextMenu" class="context-menu hidden">
-          <button class="context-item" data-action="mark-read">Marcar como Lido</button>
-          <button class="context-item" data-action="mark-unread">Marcar como Não Lido</button>
-          <div class="context-divider"></div>
-          <button class="context-item" data-action="download">Baixar</button>
-          <div class="context-divider"></div>
-          <button class="context-item" data-action="tag">Adicionar Tag</button>
-          <button class="context-item" data-action="remove">Remover</button>
-        </div>
       </main>
 
       <footer class="footer">
         <div class="footer-content">
-          <p>&copy; 2026 Manghu. Todos os direitos reservados.</p>
+          <p>&copy; 2026 Manghu. All rights reserved.</p>
         </div>
       </footer>
     </div>

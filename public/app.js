@@ -183,11 +183,11 @@ async function loadPopularToday() {
   const row = $("popularRow");
   if (!row || !state.currentSourceId) return;
 
-  row.innerHTML = `<div class="muted">Carregando populares do dia...</div>`;
+  row.innerHTML = `<div class="muted">Loading popular today...</div>`;
 
   try {
     if (state.currentSourceId !== "mangadex") {
-      row.innerHTML = `<div class="muted">Populares do dia indisponível para esta fonte.</div>`;
+      row.innerHTML = `<div class="muted">Popular today unavailable for this source.</div>`;
       return;
     }
 
@@ -198,7 +198,7 @@ async function loadPopularToday() {
 
     const list = (result.results || []).slice(0, 10);
     if (list.length === 0) {
-      row.innerHTML = `<div class="muted">Sem populares do dia.</div>`;
+      row.innerHTML = `<div class="muted">No popular manga today.</div>`;
       return;
     }
 
@@ -221,7 +221,7 @@ async function loadPopularToday() {
       };
     });
   } catch (e) {
-    row.innerHTML = `<div class="muted">Erro ao carregar populares do dia.</div>`;
+    row.innerHTML = `<div class="muted">Error loading popular manga.</div>`;
   }
 }
 
@@ -232,11 +232,11 @@ async function loadRecentlyAdded() {
   const row = $("recentlyAddedRow");
   if (!row || !state.currentSourceId) return;
 
-  row.innerHTML = `<div class="muted">Carregando mangás recentes...</div>`;
+  row.innerHTML = `<div class="muted">Loading recently added manga...</div>`;
 
   try {
     if (state.currentSourceId !== "mangadex") {
-      row.innerHTML = `<div class="muted">Indisponível para esta fonte.</div>`;
+      row.innerHTML = `<div class="muted">Unavailable for this source.</div>`;
       return;
     }
 
@@ -251,13 +251,13 @@ async function loadRecentlyAdded() {
 
     const list = (result.results || []).slice(0, 12);
     if (list.length === 0) {
-      row.innerHTML = `<div class="muted">Sem mangás recentes.</div>`;
+      row.innerHTML = `<div class="muted">No recently added manga.</div>`;
       return;
     }
 
     renderMangaGrid(row, list);
   } catch (e) {
-    row.innerHTML = `<div class="muted">Erro ao carregar mangás recentes.</div>`;
+    row.innerHTML = `<div class="muted">Error loading recently added manga.</div>`;
   }
 }
 
@@ -265,11 +265,11 @@ async function loadLatestUpdates() {
   const row = $("latestUpdatesRow");
   if (!row || !state.currentSourceId) return;
 
-  row.innerHTML = `<div class="muted">Carregando mangás atualizados...</div>`;
+  row.innerHTML = `<div class="muted">Loading latest updates...</div>`;
 
   try {
     if (state.currentSourceId !== "mangadex") {
-      row.innerHTML = `<div class="muted">Indisponível para esta fonte.</div>`;
+      row.innerHTML = `<div class="muted">Unavailable for this source.</div>`;
       return;
     }
 
@@ -284,13 +284,13 @@ async function loadLatestUpdates() {
 
     const list = (result.results || []).slice(0, 12);
     if (list.length === 0) {
-      row.innerHTML = `<div class="muted">Sem atualizações recentes.</div>`;
+      row.innerHTML = `<div class="muted">No recent updates.</div>`;
       return;
     }
 
     renderMangaGrid(row, list);
   } catch (e) {
-    row.innerHTML = `<div class="muted">Erro ao carregar atualizações.</div>`;
+    row.innerHTML = `<div class="muted">Error loading latest updates.</div>`;
   }
 }
 
@@ -340,7 +340,7 @@ function renderLibrary() {
   if (!libraryGrid) return;
 
   if (state.favorites.length === 0) {
-    libraryGrid.innerHTML = `<div class="muted">Nenhum mangá nos favoritos. Adicione seus mangás favoritos para vê-los aqui!</div>`;
+    libraryGrid.innerHTML = `<div class="muted">No manga in favorites. Add your favorite manga to see them here!</div>`;
     return;
   }
 
@@ -349,7 +349,7 @@ function renderLibrary() {
       <div class="library-card-cover">
         ${manga.cover ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}">` : '<div class="no-cover">?</div>'}
         <div class="library-card-overlay">
-          <button class="btn-read">📖 Continuar Leitura</button>
+          <button class="btn-read">📖 Continue Reading</button>
         </div>
       </div>
       <div class="library-card-info">
@@ -388,16 +388,16 @@ async function search() {
   const query = $("searchInput").value.trim();
   
   if (!state.currentSourceId) {
-    $("searchStatus").textContent = "Selecione uma fonte primeiro.";
+    $("searchStatus").textContent = "Select a source first.";
     return;
   }
   
   if (!query) {
-    $("searchStatus").textContent = "Digite um termo de pesquisa.";
+    $("searchStatus").textContent = "Enter a search term.";
     return;
   }
 
-  $("searchStatus").textContent = "Pesquisando...";
+  $("searchStatus").textContent = "Searching...";
   try {
     const result = await api(`/api/source/${state.currentSourceId}/search`, {
       method: "POST",
@@ -408,19 +408,19 @@ async function search() {
     const resultsDiv = $("results");
 
     if (results.length === 0) {
-      resultsDiv.innerHTML = `<div class="muted">Nenhum resultado encontrado</div>`;
-      $("searchStatus").textContent = "0 resultado(s) encontrado(s)";
+      resultsDiv.innerHTML = `<div class="muted">No results found</div>`;
+      $("searchStatus").textContent = "0 result(s) found";
     } else {
       renderMangaGrid(resultsDiv, results);
-      $("searchStatus").textContent = `${results.length} resultado(s) encontrado(s)`;
+      $("searchStatus").textContent = `${results.length} result(s) found`;
     }
   } catch (e) {
-    $("searchStatus").textContent = `Erro: ${e.message}`;
+    $("searchStatus").textContent = `Error: ${e.message}`;
   }
 }
 
 async function loadMangaDetails(mangaId) {
-  $("searchStatus").textContent = "Carregando detalhes...";
+  $("searchStatus").textContent = "Loading details...";
   try {
     const result = await api(`/api/source/${state.currentSourceId}/mangaDetails`, {
       method: "POST",
@@ -433,6 +433,9 @@ async function loadMangaDetails(mangaId) {
     const isFavorited = state.favorites.some(m => 
       m.id === result.id && m.sourceId === state.currentSourceId
     );
+    
+    // Verificar se tem progresso de leitura
+    const hasReadingProgress = state.lastReadChapter[result.id];
     
     // Mostrar página de detalhes
     setView("manga-details");
@@ -468,7 +471,8 @@ async function loadMangaDetails(mangaId) {
           ` : ""}
 
           <div class="manga-actions">
-            <button class="btn" id="addFavBtn">${isFavorited ? '❤️ Remover dos Favoritos' : '⭐ Adicionar aos Favoritos'}</button>
+            <button class="btn" id="addFavBtn">${isFavorited ? '❤️ Remove from Favorites' : '⭐ Add to Favorites'}</button>
+            ${hasReadingProgress ? `<button class="btn btn-continue" id="continueReadingBtn">📖 Continue Reading</button>` : ''}
           </div>
         </div>
       </div>
@@ -486,24 +490,58 @@ async function loadMangaDetails(mangaId) {
         });
         
         if (response.isFavorite) {
-          $("addFavBtn").textContent = "❤️ Remover dos Favoritos";
+          $("addFavBtn").textContent = "❤️ Remove from Favorites";
           $("addFavBtn").style.background = "linear-gradient(135deg, var(--danger) 0%, #c42a2a 100%)";
         } else {
-          $("addFavBtn").textContent = "⭐ Adicionar aos Favoritos";
+          $("addFavBtn").textContent = "⭐ Add to Favorites";
           $("addFavBtn").style.background = "";
         }
         
         await refreshState();
       } catch (e) {
         console.error(e);
-        alert("Erro ao atualizar favoritos");
+        alert("Error updating favorites");
       }
     };
+
+    if (hasReadingProgress) {
+      const continueBtn = $("continueReadingBtn");
+      continueBtn.onclick = async () => {
+        const lastChapterId = state.lastReadChapter[result.id];
+        const lastPageIndex = state.lastReadPages[`${result.id}:${lastChapterId}`] || 0;
+        
+        try {
+          const chaptersResult = await api(`/api/source/${state.currentSourceId}/chapters`, {
+            method: "POST",
+            body: JSON.stringify({ mangaId: state.currentManga.id })
+          });
+
+          state.allChapters = chaptersResult.chapters || [];
+          
+          const chapterIndex = state.allChapters.findIndex(ch => ch.id === lastChapterId);
+          
+          if (chapterIndex >= 0) {
+            const chapter = state.allChapters[chapterIndex];
+            await loadChapter(
+              lastChapterId, 
+              chapter.name || `Chapter ${chapter.chapter || chapterIndex + 1}`, 
+              chapterIndex,
+              lastPageIndex
+            );
+          } else {
+            alert("Chapter not found. It may have been removed.");
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Error continuing reading");
+        }
+      };
+    }
 
     await loadChapters();
     $("searchStatus").textContent = "";
   } catch (e) {
-    $("searchStatus").textContent = `Erro: ${e.message}`;
+    $("searchStatus").textContent = `Error: ${e.message}`;
   }
 }
 
@@ -514,7 +552,7 @@ async function loadChapters() {
   if (!state.currentManga) return;
 
   const chapDiv = $("chapters");
-  chapDiv.innerHTML = `<div class="muted">Carregando capítulos...</div>`;
+  chapDiv.innerHTML = `<div class="muted">Loading chapters...</div>`;
 
   try {
     const result = await api(`/api/source/${state.currentSourceId}/chapters`, {
@@ -532,21 +570,21 @@ async function loadChapters() {
     }
 
     if (displayChapters.length === 0) {
-      chapDiv.innerHTML = `<div class="muted">${state.settings.skipReadChapters ? "Todos os capítulos foram lidos" : "Nenhum capítulo encontrado"}</div>`;
+      chapDiv.innerHTML = `<div class="muted">${state.settings.skipReadChapters ? "All chapters have been read" : "No chapters found"}</div>`;
     } else {
       chapDiv.innerHTML = `
         <div class="chapters-header">
-          <strong>${displayChapters.length} Capítulo${displayChapters.length !== 1 ? "s" : ""} ${state.settings.skipReadChapters ? "Não Lido" + (displayChapters.length !== 1 ? "s" : "") : "Disponíve" + (displayChapters.length !== 1 ? "is" : "l")}</strong>
+          <strong>${displayChapters.length} Chapter${displayChapters.length !== 1 ? "s" : ""} ${state.settings.skipReadChapters ? "Unread" : "Available"}</strong>
         </div>
         <div class="chapters-list">
           ${displayChapters.map((ch, i) => {
             const isRead = isChapterRead(state.currentManga.id, ch.id);
             const actualIndex = state.allChapters.findIndex(c => c.id === ch.id);
             return `
-              <div class="chapter-item ${isRead ? 'chapter-read' : ''}" data-chapter-id="${escapeHtml(ch.id)}" data-chapter-index="${actualIndex}" data-chapter-name="${escapeHtml(ch.name || `Capítulo ${ch.chapter || i + 1}`)}">
+              <div class="chapter-item ${isRead ? 'chapter-read' : ''}" data-chapter-id="${escapeHtml(ch.id)}" data-chapter-index="${actualIndex}" data-chapter-name="${escapeHtml(ch.name || `Chapter ${ch.chapter || i + 1}`)}">
                 <div class="chapter-info">
-                  <div class="chapter-name">${escapeHtml(ch.name || `Capítulo ${ch.chapter || i + 1}`)}</div>
-                  ${ch.date ? `<div class="chapter-date">${new Date(ch.date).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}</div>` : ""}
+                  <div class="chapter-name">${escapeHtml(ch.name || `Chapter ${ch.chapter || i + 1}`)}</div>
+                  ${ch.date ? `<div class="chapter-date">${new Date(ch.date).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })}</div>` : ""}
                 </div>
                 <div class="chapter-action">
                   ${isRead ? `<span class="read-badge">✓</span>` : ""}
@@ -570,12 +608,12 @@ async function loadChapters() {
       });
     }
   } catch (e) {
-    chapDiv.innerHTML = `<div class="muted">Erro: ${e.message}</div>`;
+    chapDiv.innerHTML = `<div class="muted">Error: ${e.message}</div>`;
   }
 }
 
 async function loadChapter(chapterId, chapterName, chapterIndex, startPageIndex = 0) {
-  $("searchStatus").textContent = "Carregando capítulo...";
+  $("searchStatus").textContent = "Loading chapter...";
   try {
     const result = await api(`/api/source/${state.currentSourceId}/pages`, {
       method: "POST",
@@ -607,7 +645,7 @@ async function loadChapter(chapterId, chapterName, chapterIndex, startPageIndex 
     $("searchStatus").textContent = "";
     await loadChapters();
   } catch (e) {
-    $("searchStatus").textContent = `Erro: ${e.message}`;
+    $("searchStatus").textContent = `Error: ${e.message}`;
   }
 }
 
@@ -653,23 +691,23 @@ function getPrevChapterIndex(currentIndex) {
 async function goToNextChapter() {
   const nextIndex = getNextChapterIndex(state.currentChapterIndex);
   if (nextIndex >= state.allChapters.length) {
-    alert("Este é o último capítulo!");
+    alert("This is the last chapter!");
     return;
   }
 
   const nextChapter = state.allChapters[nextIndex];
-  await loadChapter(nextChapter.id, nextChapter.name || `Capítulo ${nextChapter.chapter || nextIndex + 1}`, nextIndex);
+  await loadChapter(nextChapter.id, nextChapter.name || `Chapter ${nextChapter.chapter || nextIndex + 1}`, nextIndex);
 }
 
 async function goToPrevChapter() {
   const prevIndex = getPrevChapterIndex(state.currentChapterIndex);
   if (prevIndex < 0) {
-    alert("Este é o primeiro capítulo!");
+    alert("This is the first chapter!");
     return;
   }
 
   const prevChapter = state.allChapters[prevIndex];
-  await loadChapter(prevChapter.id, prevChapter.name || `Capítulo ${prevChapter.chapter || prevIndex + 1}`, prevIndex);
+  await loadChapter(prevChapter.id, prevChapter.name || `Chapter ${prevChapter.chapter || prevIndex + 1}`, prevIndex);
 }
 
 // ============================================================================
@@ -677,7 +715,7 @@ async function goToPrevChapter() {
 // ============================================================================
 function showReader() {
   $("reader").classList.remove("hidden");
-  const chapterName = state.currentChapter?.name || "Capítulo";
+  const chapterName = state.currentChapter?.name || "Chapter";
   $("readerTitle").textContent = `${escapeHtml(state.currentManga?.title || "")} - ${escapeHtml(chapterName)}`;
   
   const pageWrap = $("pageWrap");
@@ -702,15 +740,14 @@ function renderPage() {
   const mode = state.settings.readingMode;
 
   if (mode === "webtoon") {
-    // Modo webtoon: todas as páginas em coluna vertical (torre)
     const webtoonHTML = pages
       .filter(page => page.img)
-      .map((page, i) => `<img src="${escapeHtml(page.img)}" alt="Página ${i + 1}" class="webtoon-page" loading="lazy">`)
+      .map((page, i) => `<img src="${escapeHtml(page.img)}" alt="Page ${i + 1}" class="webtoon-page" loading="lazy">`)
       .join("");
     
     pageWrap.innerHTML = webtoonHTML;
     
-    $("pageCounter").textContent = `Modo Webtoon (${pages.length} páginas)`;
+    $("pageCounter").textContent = `Webtoon Mode (${pages.length} pages)`;
     $("prevPage").style.display = "none";
     $("nextPage").style.display = "none";
     
@@ -728,7 +765,7 @@ function renderPage() {
 
     const page = pages[idx];
     const imgClass = state.settings.panWideImages ? "page-img pannable" : "page-img";
-    pageWrap.innerHTML = page.img ? `<img src="${escapeHtml(page.img)}" alt="Página ${idx + 1}" class="${imgClass}">` : `<div class="muted">Página não disponível</div>`;
+    pageWrap.innerHTML = page.img ? `<img src="${escapeHtml(page.img)}" alt="Page ${idx + 1}" class="${imgClass}">` : `<div class="muted">Page not available</div>`;
 
     if (state.settings.panWideImages) {
       const img = pageWrap.querySelector("img");
@@ -789,54 +826,54 @@ function showSettings() {
   modal.innerHTML = `
     <div class="settings-content">
       <div class="settings-header">
-        <h2>⚙️ Configurações</h2>
+        <h2>⚙️ Settings</h2>
         <button class="btn secondary" id="closeSettings">✕</button>
       </div>
       
       <div class="settings-body">
         <div class="setting-group">
-          <label>Modo de Leitura</label>
+          <label>Reading Mode</label>
           <select id="modeSelect" class="input">
-            <option value="ltr" ${state.settings.readingMode === "ltr" ? "selected" : ""}>Esquerda para Direita</option>
-            <option value="rtl" ${state.settings.readingMode === "rtl" ? "selected" : ""}>Direita para Esquerda (Manga)</option>
-            <option value="webtoon" ${state.settings.readingMode === "webtoon" ? "selected" : ""}>Webtoon (Scroll Vertical)</option>
+            <option value="ltr" ${state.settings.readingMode === "ltr" ? "selected" : ""}>Left to Right</option>
+            <option value="rtl" ${state.settings.readingMode === "rtl" ? "selected" : ""}>Right to Left (Manga)</option>
+            <option value="webtoon" ${state.settings.readingMode === "webtoon" ? "selected" : ""}>Webtoon (Vertical Scroll)</option>
           </select>
         </div>
 
         <div class="settings-divider"></div>
-        <h3 class="settings-subsection">Configurações Avançadas</h3>
+        <h3 class="settings-subsection">Advanced Settings</h3>
 
         <div class="setting-group">
           <label class="toggle-label">
-            <span class="toggle-text">Ocultar capítulos já lidos</span>
+            <span class="toggle-text">Hide read chapters</span>
             <input type="checkbox" id="skipReadToggle" ${state.settings.skipReadChapters ? "checked" : ""}>
             <span class="toggle-slider"></span>
           </label>
-          <p class="setting-description">Esconde capítulos que você já terminou de ler</p>
+          <p class="setting-description">Hides chapters you've already finished reading</p>
         </div>
 
         <div class="setting-group">
           <label class="toggle-label">
-            <span class="toggle-text">Pular capítulos duplicados na leitura</span>
+            <span class="toggle-text">Skip duplicate chapters when reading</span>
             <input type="checkbox" id="skipDuplicatesToggle" ${state.settings.skipDuplicates ? "checked" : ""}>
             <span class="toggle-slider"></span>
           </label>
-          <p class="setting-description">Ao ler, avança automaticamente pulando duplicados do mesmo número</p>
+          <p class="setting-description">Automatically advances past duplicates of the same chapter number</p>
         </div>
 
         <div class="setting-group">
           <label class="toggle-label">
-            <span class="toggle-text">Panorâmica em imagens largas</span>
+            <span class="toggle-text">Pan wide images</span>
             <input type="checkbox" id="panWideToggle" ${state.settings.panWideImages ? "checked" : ""}>
             <span class="toggle-slider"></span>
           </label>
-          <p class="setting-description">Permite deslocar horizontalmente em páginas duplas</p>
+          <p class="setting-description">Allows horizontal scrolling on double-page spreads</p>
         </div>
 
         <div class="settings-divider"></div>
 
         <div class="setting-group">
-          <button class="btn secondary" id="clearReadBtn">Limpar Histórico de Leitura</button>
+          <button class="btn secondary" id="clearReadBtn">Clear Reading History</button>
         </div>
       </div>
     </div>
@@ -874,7 +911,7 @@ function showSettings() {
   };
 
   $("clearReadBtn").onclick = () => {
-    if (confirm("Limpar todo o histórico de leitura?")) {
+    if (confirm("Clear all reading history?")) {
       state.readChapters.clear();
       saveSettings();
       if (state.currentManga) loadChapters();
@@ -893,18 +930,16 @@ function setView(view) {
     if (el) el.classList.toggle("hidden", v !== view);
   }
   
-  // Renderizar biblioteca quando a view for ativada
   if (view === "library") {
     renderLibrary();
   }
   
-  // Atualizar tabs apenas se não for manga-details
   if (view !== "manga-details") {
     document.querySelectorAll(".nav-link").forEach(link => {
       link.classList.remove("active");
       if ((view === "discover" && link.textContent.trim() === "Home") ||
-          (view === "library" && link.textContent.trim() === "Biblioteca") ||
-          (view === "advanced-search" && link.textContent.trim() === "Procura Avançada")) {
+          (view === "library" && link.textContent.trim() === "Library") ||
+          (view === "advanced-search" && link.textContent.trim() === "Advanced Search")) {
         link.classList.add("active");
       }
     });
@@ -937,9 +972,9 @@ function bindUI() {
       
       if (text === "Home") {
         setView("discover");
-      } else if (text === "Biblioteca") {
+      } else if (text === "Library") {
         setView("library");
-      } else if (text === "Procura Avançada") {
+      } else if (text === "Advanced Search") {
         setView("advanced-search");
       }
 
@@ -1037,16 +1072,16 @@ function filterAndSortResults(results) {
 // ============================================================================
 // ADVANCED SEARCH
 // ============================================================================
-async function advancedSearch() {
+async function advancedSearch(page = 1) {
   const query = $("advancedSearchInput").value.trim();
   const orderBy = $("advancedOrderBy").value;
   
   if (!state.currentSourceId) {
-    $("advancedSearchStatus").textContent = "Selecione uma fonte primeiro.";
+    $("advancedSearchStatus").textContent = "Select a source first.";
     return;
   }
 
-  $("advancedSearchStatus").textContent = "Pesquisando...";
+  $("advancedSearchStatus").textContent = "Searching...";
   try {
     const searchQuery = query || "*";
     
@@ -1080,41 +1115,44 @@ async function advancedSearch() {
     const resultsDiv = $("advancedResults");
 
     if (results.length === 0) {
-      resultsDiv.innerHTML = `<div class="muted">Nenhum resultado encontrado</div>`;
-    } else {
-      resultsDiv.innerHTML = results.map(m => `
-        <div class="manga-card" data-manga-id="${escapeHtml(m.id)}">
-          <div class="manga-card-cover">
-            ${m.cover ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}">` : '<div class="no-cover">?</div>'}
-          </div>
-          <div class="manga-card-info">
-            <h3 class="manga-card-title">${escapeHtml(m.title)}</h3>
-            <p class="manga-card-author">${escapeHtml(m.author || "")}</p>
-          </div>
-        </div>
-      `).join("");
-
-      resultsDiv.querySelectorAll("[data-manga-id]").forEach(el => {
-        el.onclick = async () => {
-          const mangaId = el.dataset.mangaId;
-          await loadMangaDetails(mangaId);
-        };
-      });
+      resultsDiv.innerHTML = `<div class="muted">No results found</div>`;
+      paginationDiv.innerHTML = "";
+      $("advancedSearchStatus").textContent = "0 result(s) found";
+      return;
     }
 
-    $("advancedSearchStatus").textContent = `${results.length} resultado(s) encontrado(s)`;
+    resultsDiv.innerHTML = results.map(m => `
+      <div class="manga-card" data-manga-id="${escapeHtml(m.id)}">
+        <div class="manga-card-cover">
+          ${m.cover ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}">` : '<div class="no-cover">?</div>'}
+        </div>
+        <div class="manga-card-info">
+          <h3 class="manga-card-title">${escapeHtml(m.title)}</h3>
+          <p class="manga-card-author">${escapeHtml(m.author || "")}</p>
+        </div>
+      </div>
+    `).join("");
+
+    resultsDiv.querySelectorAll("[data-manga-id]").forEach(el => {
+      el.onclick = async () => {
+        const mangaId = el.dataset.mangaId;
+        await loadMangaDetails(mangaId);
+      };
+    });
+
+    $("advancedSearchStatus").textContent = `${results.length} result(s) found - Page ${page} of ${Math.ceil(results.length / state.advancedSearchPagination.resultsPerPage)}`;
   } catch (e) {
-    $("advancedSearchStatus").textContent = `Erro: ${e.message}`;
+    $("advancedSearchStatus").textContent = `Error: ${e.message}`;
   }
 }
 
 async function randomManga() {
   if (!state.currentSourceId) {
-    alert("Selecione uma fonte primeiro.");
+    alert("Select a source first.");
     return;
   }
 
-  $("advancedSearchStatus").textContent = "Buscando manga aleatório...";
+  $("advancedSearchStatus").textContent = "Finding random manga...";
   try {
     const result = await api(`/api/source/${state.currentSourceId}/search`, {
       method: "POST",
@@ -1127,10 +1165,10 @@ async function randomManga() {
       const randomManga = results[randomIndex];
       await loadMangaDetails(randomManga.id);
     } else {
-      $("advancedSearchStatus").textContent = "Nenhum manga encontrado";
+      $("advancedSearchStatus").textContent = "No manga found";
     }
   } catch (e) {
-    $("advancedSearchStatus").textContent = `Erro: ${e.message}`;
+    $("advancedSearchStatus").textContent = `Error: ${e.message}`;
   }
 }
 
@@ -1175,7 +1213,7 @@ function initAdvancedFilters() {
     const installed = Object.values(state.installedSources);
     
     if (installed.length === 0) {
-      advancedSourceSelect.innerHTML = `<option value="">(Instale uma fonte primeiro)</option>`;
+      advancedSourceSelect.innerHTML = `<option value="">(Install a source first)</option>`;
       return;
     }
     
