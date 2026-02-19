@@ -50,6 +50,20 @@ async function readStore() {
   store.installedSources = store.installedSources || {};
   store.history = store.history || [];
   store.favorites = store.favorites || [];
+
+  // --- New feature fields: migrate existing stores gracefully ---
+  store.readingStatus = store.readingStatus || {};
+  store.reviews = store.reviews || {};
+  store.customLists = store.customLists || [];
+  store.analytics = store.analytics || {
+    totalChaptersRead: 0,
+    totalTimeSpent: 0,  // minutes
+    readingSessions: [],
+    dailyStreak: 0,
+    lastReadDate: null
+  };
+  store.achievements = store.achievements || [];
+
   return store;
 }
 
@@ -98,9 +112,7 @@ async function getRepoDataWithCache(repo, ttl = 3600000) {
   if (cached && Date.now() - cached.time < ttl) {
     return cached.data;
   }
-
   if (repo.url.startsWith("localrepo:")) return { sources: [] };
-
   try {
     const data = await fetchJson(repo.url);
     reposCache.set(repo.url, { data, time: Date.now() });
@@ -117,7 +129,6 @@ async function listAvailableSourcesFromRepos(repos) {
     try {
       const data = await getRepoDataWithCache(repo);
       const kind = repo.kind || detectRepoKind(data);
-
       if (kind === "jsrepo" && data.sources) {
         for (const s of data.sources) {
           if (s?.id && s?.name && s?.version && s?.codeUrl && safeId(s.id)) {
@@ -146,11 +157,9 @@ async function listAvailableSourcesFromRepos(repos) {
 async function autoInstallLocalSources() {
   const store = await readStore();
   const localSourceFiles = fs.readdirSync(SOURCES_DIR).filter(f => f.endsWith(".js"));
-  
   for (const file of localSourceFiles) {
     const id = file.replace(".js", "");
-    if (store.installedSources[id]) continue; // Já instalada
-    
+    if (store.installedSources[id]) continue;
     try {
       const mod = loadSourceFromFile(id);
       store.installedSources[id] = {
@@ -166,11 +175,13 @@ async function autoInstallLocalSources() {
       console.warn(`⚠ Erro ao auto-instalar ${id}:`, e.message);
     }
   }
-  
   await writeStore(store);
 }
 
-// --- Endpoints ---
+// ============================================================================
+// EXISTING ENDPOINTS
+// ============================================================================
+
 app.get("/api/state", async (req, res) => {
   try {
     const store = await readStore();
@@ -185,7 +196,6 @@ app.post("/api/repos", async (req, res) => {
   try {
     const { url, repoJson } = req.body || {};
     let repoData, kind, repoUrl;
-
     if (typeof url === "string" && url.startsWith("http")) {
       repoData = await fetchJson(url);
       repoUrl = url;
@@ -195,12 +205,8 @@ app.post("/api/repos", async (req, res) => {
     } else {
       return res.status(400).json({ error: "URL ou JSON inválido" });
     }
-
     kind = detectRepoKind(repoData);
-    if (kind === "unknown") {
-      return res.status(400).json({ error: "Formato de repo não reconhecido" });
-    }
-
+    if (kind === "unknown") return res.status(400).json({ error: "Formato de repo não reconhecido" });
     const store = await readStore();
     if (!store.repos.some(r => r.url === repoUrl)) {
       const name = repoData?.name || (kind === "tachiyomi" ? "Tachiyomi Repo" : repoUrl);
@@ -231,18 +237,14 @@ app.post("/api/sources/install", async (req, res) => {
     const { id } = req.body || {};
     const sid = safeId(id);
     if (!sid) return res.status(400).json({ error: "ID inválido" });
-
     const store = await readStore();
     const available = await listAvailableSourcesFromRepos(store.repos);
     const source = available.find(s => s.id === sid);
-
     if (!source) return res.status(404).json({ error: "Source não encontrado" });
     if (source.kind !== "js") return res.status(400).json({ error: "Source não compatível" });
-
     const code = await fetchText(source.codeUrl);
     await fsp.writeFile(sourcePath(sid), code, "utf8");
     const mod = loadSourceFromFile(sid);
-
     store.installedSources[sid] = {
       id: sid,
       name: mod.meta.name || source.name,
@@ -279,26 +281,15 @@ app.post("/api/source/:id/:method", async (req, res) => {
     const { id, method } = req.params;
     const sid = safeId(id);
     if (!sid) return res.status(400).json({ error: "ID inválido" });
-
     const mod = loadSourceFromFile(sid);
     if (typeof mod[method] !== "function") return res.status(400).json({ error: "Método não existe" });
-
     const { query, page, mangaId, chapterId } = req.body || {};
-    
-    // Mapeamento de métodos
     let result;
-    if (method === "search") {
-      result = await mod.search(query || "", Number(page) || 1);
-    } else if (method === "mangaDetails") {
-      result = await mod.mangaDetails(mangaId || "");
-    } else if (method === "chapters") {
-      result = await mod.chapters(mangaId || "");
-    } else if (method === "pages") {
-      result = await mod.pages(chapterId || "");
-    } else {
-      return res.status(400).json({ error: "Método não suportado" });
-    }
-    
+    if (method === "search") result = await mod.search(query || "", Number(page) || 1);
+    else if (method === "mangaDetails") result = await mod.mangaDetails(mangaId || "");
+    else if (method === "chapters") result = await mod.chapters(mangaId || "");
+    else if (method === "pages") result = await mod.pages(chapterId || "");
+    else return res.status(400).json({ error: "Método não suportado" });
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -339,9 +330,7 @@ app.post("/api/history/add", async (req, res) => {
     const { mangaId, sourceId, manga, chapterId } = req.body || {};
     const store = await readStore();
     const existing = store.history.findIndex(m => m.id === mangaId && m.sourceId === sourceId);
-    if (existing >= 0) {
-      store.history.splice(existing, 1);
-    }
+    if (existing >= 0) store.history.splice(existing, 1);
     store.history.unshift({ ...manga, sourceId, chapterId, readAt: new Date().toISOString() });
     store.history = store.history.slice(0, 100);
     await writeStore(store);
@@ -351,46 +340,28 @@ app.post("/api/history/add", async (req, res) => {
   }
 });
 
-// Endpoint da biblioteca
 app.get('/api/library', async (req, res) => {
   try {
     const store = await readStore();
-    
-    res.json({
-      favorites: store.favorites || [],
-      history: store.history || []
-    });
+    res.json({ favorites: store.favorites || [], history: store.history || [] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Toggle de favoritos
 app.post('/api/favorites/toggle', async (req, res) => {
   try {
     const { mangaId, sourceId, manga } = req.body;
     const store = await readStore();
-    
-    if (!store.favorites) {
-      store.favorites = [];
-    }
-    
     const index = store.favorites.findIndex(m => m.id === mangaId && m.sourceId === sourceId);
     let isFavorite;
-    
     if (index > -1) {
       store.favorites.splice(index, 1);
       isFavorite = false;
     } else {
-      store.favorites.push({
-        ...manga,
-        id: mangaId,
-        sourceId: sourceId,
-        addedAt: new Date().toISOString()
-      });
+      store.favorites.push({ ...manga, id: mangaId, sourceId, addedAt: new Date().toISOString() });
       isFavorite = true;
     }
-    
     await writeStore(store);
     res.json({ success: true, isFavorite, favorites: store.favorites });
   } catch (e) {
@@ -398,6 +369,251 @@ app.post('/api/favorites/toggle', async (req, res) => {
   }
 });
 
+// ============================================================================
+// NEW ENDPOINTS: READING STATUS
+// ============================================================================
+
+app.get('/api/user/status', async (req, res) => {
+  try {
+    const store = await readStore();
+    res.json({ readingStatus: store.readingStatus });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Set reading status for a manga; pass status: null to remove
+app.post('/api/user/status', async (req, res) => {
+  try {
+    const { mangaId, sourceId, status, mangaData } = req.body || {};
+    if (!mangaId || !sourceId) return res.status(400).json({ error: "mangaId and sourceId required" });
+    const store = await readStore();
+    const key = `${mangaId}:${sourceId}`;
+    if (!status || status === 'none') {
+      delete store.readingStatus[key];
+    } else {
+      store.readingStatus[key] = {
+        status,
+        updatedAt: new Date().toISOString(),
+        manga: mangaData || {}
+      };
+    }
+    await writeStore(store);
+    res.json({ ok: true, readingStatus: store.readingStatus });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// NEW ENDPOINTS: REVIEWS
+// ============================================================================
+
+app.get('/api/reviews/:mangaId', async (req, res) => {
+  try {
+    const store = await readStore();
+    res.json({ reviews: store.reviews[req.params.mangaId] || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Add or update local review; local app uses single reviewer model
+app.post('/api/reviews', async (req, res) => {
+  try {
+    const { mangaId, rating, text } = req.body || {};
+    if (!mangaId || !rating) return res.status(400).json({ error: "mangaId and rating required" });
+    const store = await readStore();
+    if (!store.reviews[mangaId]) store.reviews[mangaId] = [];
+    // Replace if user already has a review (single-user app)
+    store.reviews[mangaId] = [{
+      rating: Math.min(5, Math.max(1, Number(rating))),
+      text: String(text || "").slice(0, 2000),
+      date: new Date().toISOString()
+    }, ...store.reviews[mangaId].slice(0, 19)];
+    await writeStore(store);
+    res.json({ ok: true, reviews: store.reviews[mangaId] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// NEW ENDPOINTS: CUSTOM LISTS
+// ============================================================================
+
+app.get('/api/lists', async (req, res) => {
+  try {
+    const store = await readStore();
+    res.json({ lists: store.customLists });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/lists', async (req, res) => {
+  try {
+    const { name, description } = req.body || {};
+    if (!name || !name.trim()) return res.status(400).json({ error: "List name required" });
+    const store = await readStore();
+    const list = {
+      id: `list_${Date.now()}`,
+      name: name.trim().slice(0, 100),
+      description: String(description || "").slice(0, 500),
+      mangaItems: [],
+      createdAt: new Date().toISOString()
+    };
+    store.customLists.push(list);
+    await writeStore(store);
+    res.json({ ok: true, list });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/lists/:id', async (req, res) => {
+  try {
+    const { name, description } = req.body || {};
+    const store = await readStore();
+    const list = store.customLists.find(l => l.id === req.params.id);
+    if (!list) return res.status(404).json({ error: "List not found" });
+    if (name) list.name = name.trim().slice(0, 100);
+    if (description !== undefined) list.description = String(description).slice(0, 500);
+    await writeStore(store);
+    res.json({ ok: true, list });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/lists/:id', async (req, res) => {
+  try {
+    const store = await readStore();
+    store.customLists = store.customLists.filter(l => l.id !== req.params.id);
+    await writeStore(store);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/lists/:id/manga', async (req, res) => {
+  try {
+    const { mangaData } = req.body || {};
+    if (!mangaData?.id) return res.status(400).json({ error: "mangaData.id required" });
+    const store = await readStore();
+    const list = store.customLists.find(l => l.id === req.params.id);
+    if (!list) return res.status(404).json({ error: "List not found" });
+    if (!list.mangaItems.some(m => m.id === mangaData.id)) {
+      list.mangaItems.push({ ...mangaData, addedAt: new Date().toISOString() });
+    }
+    await writeStore(store);
+    res.json({ ok: true, list });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/lists/:id/manga/:mangaId', async (req, res) => {
+  try {
+    const store = await readStore();
+    const list = store.customLists.find(l => l.id === req.params.id);
+    if (!list) return res.status(404).json({ error: "List not found" });
+    list.mangaItems = list.mangaItems.filter(m => m.id !== req.params.mangaId);
+    await writeStore(store);
+    res.json({ ok: true, list });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// NEW ENDPOINTS: ANALYTICS
+// ============================================================================
+
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const store = await readStore();
+    // Compute reading-status distribution
+    const dist = { reading: 0, completed: 0, on_hold: 0, plan_to_read: 0, dropped: 0 };
+    for (const s of Object.values(store.readingStatus)) {
+      if (dist[s.status] !== undefined) dist[s.status]++;
+    }
+    res.json({
+      analytics: store.analytics,
+      statusDistribution: dist,
+      totalFavorites: store.favorites.length,
+      totalReviews: Object.values(store.reviews).reduce((n, arr) => n + arr.length, 0),
+      totalLists: store.customLists.length
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Called when a reading session ends; duration in minutes
+app.post('/api/analytics/session', async (req, res) => {
+  try {
+    const { mangaId, chapterId, duration } = req.body || {};
+    const store = await readStore();
+    const a = store.analytics;
+    const mins = Math.max(0, Number(duration) || 0);
+
+    a.totalTimeSpent = (a.totalTimeSpent || 0) + mins;
+    a.totalChaptersRead = (a.totalChaptersRead || 0) + 1;
+
+    // Daily streak: consecutive days with at least one read
+    const todayStr = new Date().toDateString();
+    const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+    if (a.lastReadDate !== todayStr) {
+      a.dailyStreak = a.lastReadDate === yesterdayStr ? (a.dailyStreak || 0) + 1 : 1;
+      a.lastReadDate = todayStr;
+    }
+
+    a.readingSessions = a.readingSessions || [];
+    a.readingSessions.unshift({ mangaId, chapterId, duration: mins, date: new Date().toISOString() });
+    a.readingSessions = a.readingSessions.slice(0, 200);
+
+    await writeStore(store);
+    res.json({ ok: true, analytics: store.analytics });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// NEW ENDPOINTS: ACHIEVEMENTS
+// ============================================================================
+
+app.get('/api/achievements', async (req, res) => {
+  try {
+    const store = await readStore();
+    res.json({ achievements: store.achievements });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Unlock an achievement; idempotent
+app.post('/api/achievements/unlock', async (req, res) => {
+  try {
+    const { achievementId } = req.body || {};
+    if (!achievementId) return res.status(400).json({ error: "achievementId required" });
+    const store = await readStore();
+    const isNew = !store.achievements.includes(achievementId);
+    if (isNew) {
+      store.achievements.push(achievementId);
+      await writeStore(store);
+    }
+    res.json({ ok: true, isNew, achievements: store.achievements });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================================
+// STATIC FILES
+// ============================================================================
 app.use("/", express.static(path.join(__dirname, "public")));
 
 ensureDirs()

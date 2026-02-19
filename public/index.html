@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -10,35 +10,79 @@
   <div class="app-shell">
     <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
+    <!-- ====================================================================
+         SIDEBAR
+    ===================================================================== -->
     <aside id="sidebar" class="sidebar">
-      <div class="sidebar-header">Menu</div>
+      <div class="sidebar-brand">
+        <span class="sidebar-logo">M</span>
+        <span class="sidebar-brand-text">Manghu</span>
+      </div>
+
       <nav class="sidebar-nav">
-        <a href="#" class="nav-link active">Home</a>
-        <a href="#" class="nav-link">Library</a>
-        <a href="#" class="nav-link" id="nav-advanced-search">Advanced Search</a>
+        <span class="sidebar-nav-label">Browse</span>
+        <a href="#" class="nav-link active" data-view="discover">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Home
+        </a>
+        <a href="#" class="nav-link" data-view="advanced-search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Advanced Search
+        </a>
+
+        <span class="sidebar-nav-label">My Content</span>
+        <a href="#" class="nav-link" data-view="library">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Library
+        </a>
+        <a href="#" class="nav-link" data-view="lists">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          My Lists
+        </a>
+
+        <span class="sidebar-nav-label">Stats</span>
+        <a href="#" class="nav-link" data-view="analytics">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Analytics
+        </a>
       </nav>
+
       <div class="sidebar-footer">
-        <button id="btn-settings" class="btn-settings-sidebar">Settings</button>
+        <button id="btn-settings-sidebar" class="btn-settings-sidebar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </button>
       </div>
     </aside>
 
+    <!-- ====================================================================
+         MAIN CONTENT
+    ===================================================================== -->
     <div class="app-content">
       <header class="topbar">
         <div class="container-top">
           <button id="sidebarToggle" class="btn-sidebar-toggle" aria-label="Open menu">☰</button>
           <div class="brand">Manghu</div>
+          <!-- Theme toggle: sun/moon icon -->
+          <button id="themeToggle" class="btn-theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
+            <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
         </div>
       </header>
 
       <main class="main-container">
-        <!-- Discover View -->
+
+        <!-- ==================================================================
+             DISCOVER VIEW
+        ================================================================== -->
         <section id="view-discover" class="view">
           <div class="home-hero">
             <h1>Welcome to Manghu</h1>
             <p>Quick search, advanced filters, and comfortable reading.</p>
           </div>
 
-          <!-- Search Section -->
+          <!-- Search -->
           <div class="search-section">
             <div class="search-container">
               <h2>Search Manga</h2>
@@ -51,7 +95,7 @@
             </div>
           </div>
 
-          <!-- Statistics Section -->
+          <!-- Stats -->
           <div class="stats-section">
             <div class="stat-card">
               <div class="stat-number" id="statTotalLibrary">0</div>
@@ -59,98 +103,169 @@
             </div>
             <div class="stat-card">
               <div class="stat-number" id="statCompleted">0</div>
-              <div class="stat-label">Completed Manga</div>
+              <div class="stat-label">Completed</div>
             </div>
             <div class="stat-card">
               <div class="stat-number" id="statChaptersRead">0</div>
               <div class="stat-label">Chapters Read</div>
             </div>
+            <div class="stat-card">
+              <div class="stat-number" id="statReadingStreak">0</div>
+              <div class="stat-label">Day Streak</div>
+            </div>
           </div>
 
-          <div class="popular-section">
-            <div class="popular-header">
-              <h3>Most Popular Today</h3>
+          <!-- Recommended For You (populated when there's library data) -->
+          <div class="recommended-section" id="recommendedSection" style="display:none">
+            <div class="section-header">
+              <h3>Recommended For You</h3>
             </div>
+            <div id="recommendedRow" class="popular-row"></div>
+          </div>
+
+          <!-- Popular Today -->
+          <div class="popular-section">
+            <div class="popular-header"><h3>Most Popular Today</h3></div>
             <div id="popularRow" class="popular-row"></div>
           </div>
 
-          <!-- Recently Added Section -->
+          <!-- Recently Added -->
           <div class="recent-section">
-            <div class="section-header">
-              <h3>Recently Added</h3>
-            </div>
+            <div class="section-header"><h3>Recently Added</h3></div>
             <div id="recentlyAddedRow" class="results-grid"></div>
           </div>
 
-          <!-- Latest Updates Section -->
+          <!-- Latest Updates -->
           <div class="latest-section">
-            <div class="section-header">
-              <h3>Latest Updates</h3>
-            </div>
+            <div class="section-header"><h3>Latest Updates</h3></div>
             <div id="latestUpdatesRow" class="results-grid"></div>
           </div>
 
-          <!-- Results Grid -->
+          <!-- Search Results -->
           <div class="results-section">
             <div id="results" class="results-grid"></div>
           </div>
         </section>
 
-        <!-- Manga Details Page -->
+        <!-- ==================================================================
+             MANGA DETAILS VIEW
+        ================================================================== -->
         <section id="view-manga-details" class="view hidden">
           <div class="manga-page">
             <button id="backBtn" class="btn-back">← Back</button>
-            
             <div id="details" class="manga-detail-section"></div>
+            <!-- Reading Status Selector (rendered by JS) -->
+            <div id="readingStatusSection"></div>
             <div id="chapters" class="chapters-section"></div>
+            <!-- Reviews Section (rendered by JS) -->
+            <div id="reviewsSection"></div>
           </div>
         </section>
 
-        <!-- Library View -->
+        <!-- ==================================================================
+             LIBRARY VIEW
+        ================================================================== -->
         <section id="view-library" class="view hidden">
           <div class="library-container">
             <div class="library-header">
               <h2>My Library</h2>
-              <div class="library-stats">
-                <span id="libraryCount">0 manga</span>
+              <div class="library-controls">
+                <select id="libraryStatusFilter" class="form-control form-control-sm">
+                  <option value="all">All Manga</option>
+                  <option value="reading">Reading</option>
+                  <option value="completed">Completed</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="plan_to_read">Plan to Read</option>
+                  <option value="dropped">Dropped</option>
+                </select>
+                <span id="libraryCount" class="library-stats">0 manga</span>
               </div>
             </div>
-
             <div class="library-grid" id="library"></div>
           </div>
         </section>
 
-        <!-- Reader -->
-        <div id="reader" class="reader hidden">
-          <div class="reader-header">
-            <button id="closeReader" class="btn-close">✕</button>
-            <div id="readerTitle" class="reader-title"></div>
-            <div class="reader-nav">
-              <button id="prevPage" class="btn-nav">◀ Previous</button>
-              <span id="pageCounter" class="page-info"></span>
-              <button id="nextPage" class="btn-nav">Next ▶</button>
+        <!-- ==================================================================
+             MY LISTS VIEW
+        ================================================================== -->
+        <section id="view-lists" class="view hidden">
+          <div class="lists-container">
+            <div class="lists-header">
+              <h2>My Lists</h2>
+              <button id="createListBtn" class="btn btn-primary">+ New List</button>
+            </div>
+            <div id="listsGrid" class="lists-grid"></div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             LIST DETAIL VIEW (single list)
+        ================================================================== -->
+        <section id="view-list-detail" class="view hidden">
+          <div class="manga-page">
+            <button id="backToListsBtn" class="btn-back">← Back to Lists</button>
+            <div id="listDetailContent"></div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             ANALYTICS VIEW
+        ================================================================== -->
+        <section id="view-analytics" class="view hidden">
+          <div class="analytics-container">
+            <h2 class="analytics-title">My Reading Analytics</h2>
+
+            <!-- Summary cards -->
+            <div class="analytics-stats">
+              <div class="analytics-card">
+                <div class="analytics-icon">📖</div>
+                <div class="analytics-value" id="anaChapters">0</div>
+                <div class="analytics-label">Chapters Read</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">⏱️</div>
+                <div class="analytics-value" id="anaTime">0h</div>
+                <div class="analytics-label">Time Spent</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">🔥</div>
+                <div class="analytics-value" id="anaStreak">0</div>
+                <div class="analytics-label">Day Streak</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-icon">📚</div>
+                <div class="analytics-value" id="anaLibrary">0</div>
+                <div class="analytics-label">In Library</div>
+              </div>
+            </div>
+
+            <!-- Status distribution -->
+            <div class="analytics-section">
+              <h3>Library by Status</h3>
+              <div id="statusDistribution" class="status-distribution"></div>
+            </div>
+
+            <!-- Achievements -->
+            <div class="analytics-section">
+              <h3>Achievements <span id="achievementCount" class="achievement-count">0/12</span></h3>
+              <div id="achievementsGrid" class="achievements-grid"></div>
+            </div>
+
+            <!-- Recent sessions -->
+            <div class="analytics-section">
+              <h3>Recent Reading Sessions</h3>
+              <div id="recentSessions" class="sessions-list"></div>
             </div>
           </div>
-          <div id="pageWrap" class="reader-content"></div>
-        </div>
+        </section>
 
-        <!-- Context Menu -->
-        <div id="contextMenu" class="context-menu hidden">
-          <button class="context-item" data-action="mark-read">Mark as Read</button>
-          <button class="context-item" data-action="mark-unread">Mark as Unread</button>
-          <div class="context-divider"></div>
-          <button class="context-item" data-action="download">Download</button>
-          <div class="context-divider"></div>
-          <button class="context-item" data-action="tag">Add Tag</button>
-          <button class="context-item" data-action="remove">Remove</button>
-        </div>
-
-        <!-- Advanced Search View -->
+        <!-- ==================================================================
+             ADVANCED SEARCH VIEW
+        ================================================================== -->
         <section id="view-advanced-search" class="view hidden">
           <div class="advanced-search-page">
             <h1 class="page-title">Advanced Search</h1>
 
-            <!-- Search Bar -->
             <div class="search-section">
               <div class="search-container">
                 <div class="search-form">
@@ -162,9 +277,7 @@
               </div>
             </div>
 
-            <!-- Advanced Filters -->
             <div class="advanced-filters-section">
-              <!-- Order By -->
               <div class="filter-group">
                 <label>Sort by</label>
                 <select id="advancedOrderBy" class="form-control">
@@ -184,30 +297,16 @@
                 </select>
               </div>
 
-              <!-- Publication Status -->
               <div class="filter-group">
                 <label>Publication Status</label>
                 <div class="status-filter">
-                  <label class="filter-checkbox">
-                    <input type="checkbox" value="ongoing" class="advanced-status-check">
-                    <span>📖 Ongoing</span>
-                  </label>
-                  <label class="filter-checkbox">
-                    <input type="checkbox" value="completed" class="advanced-status-check">
-                    <span>✅ Completed</span>
-                  </label>
-                  <label class="filter-checkbox">
-                    <input type="checkbox" value="hiatus" class="advanced-status-check">
-                    <span>⏸️ Hiatus</span>
-                  </label>
-                  <label class="filter-checkbox">
-                    <input type="checkbox" value="cancelled" class="advanced-status-check">
-                    <span>❌ Cancelled</span>
-                  </label>
+                  <label class="filter-checkbox"><input type="checkbox" value="ongoing" class="advanced-status-check"><span>📖 Ongoing</span></label>
+                  <label class="filter-checkbox"><input type="checkbox" value="completed" class="advanced-status-check"><span>✅ Completed</span></label>
+                  <label class="filter-checkbox"><input type="checkbox" value="hiatus" class="advanced-status-check"><span>⏸️ Hiatus</span></label>
+                  <label class="filter-checkbox"><input type="checkbox" value="cancelled" class="advanced-status-check"><span>❌ Cancelled</span></label>
                 </div>
               </div>
 
-              <!-- Tags - Format -->
               <div class="filter-group">
                 <label>Format</label>
                 <div class="advanced-tags-section">
@@ -226,7 +325,6 @@
                 </div>
               </div>
 
-              <!-- Tags - Genre -->
               <div class="filter-group">
                 <label>Genre</label>
                 <div class="advanced-tags-section">
@@ -258,7 +356,6 @@
                 </div>
               </div>
 
-              <!-- Tags - Theme -->
               <div class="filter-group">
                 <label>Theme</label>
                 <div class="advanced-tags-section">
@@ -272,11 +369,8 @@
                   <div class="genre-chip" data-tag="Ghosts">Ghosts</div>
                   <div class="genre-chip" data-tag="Gyaru">Gyaru</div>
                   <div class="genre-chip" data-tag="Harem">Harem</div>
-                  <div class="genre-chip" data-tag="Incest">Incest</div>
-                  <div class="genre-chip" data-tag="Loli">Loli</div>
                   <div class="genre-chip" data-tag="Mafia">Mafia</div>
                   <div class="genre-chip" data-tag="Magic">Magic</div>
-                  <div class="genre-chip" data-tag="Mahjong">Mahjong</div>
                   <div class="genre-chip" data-tag="Martial Arts">Martial Arts</div>
                   <div class="genre-chip" data-tag="Military">Military</div>
                   <div class="genre-chip" data-tag="Monster Girls">Monster Girls</div>
@@ -287,23 +381,15 @@
                   <div class="genre-chip" data-tag="Police">Police</div>
                   <div class="genre-chip" data-tag="Post-Apocalyptic">Post-Apocalyptic</div>
                   <div class="genre-chip" data-tag="Reincarnation">Reincarnation</div>
-                  <div class="genre-chip" data-tag="Reverse Harem">Reverse Harem</div>
-                  <div class="genre-chip" data-tag="Samurai">Samurai</div>
                   <div class="genre-chip" data-tag="School Life">School Life</div>
-                  <div class="genre-chip" data-tag="Shota">Shota</div>
                   <div class="genre-chip" data-tag="Supernatural">Supernatural</div>
                   <div class="genre-chip" data-tag="Survival">Survival</div>
                   <div class="genre-chip" data-tag="Time Travel">Time Travel</div>
-                  <div class="genre-chip" data-tag="Traditional Games">Traditional Games</div>
                   <div class="genre-chip" data-tag="Vampires">Vampires</div>
-                  <div class="genre-chip" data-tag="Video Games">Video Games</div>
-                  <div class="genre-chip" data-tag="Villainess">Villainess</div>
-                  <div class="genre-chip" data-tag="Virtual Reality">Virtual Reality</div>
                   <div class="genre-chip" data-tag="Zombies">Zombies</div>
                 </div>
               </div>
 
-              <!-- Tags - Content -->
               <div class="filter-group">
                 <label>Content</label>
                 <div class="advanced-tags-section">
@@ -313,17 +399,48 @@
               </div>
             </div>
 
-            <!-- Results -->
             <div id="advancedSearchStatus" class="search-status"></div>
             <div class="results-section">
               <div id="advancedResults" class="results-grid"></div>
             </div>
-
-            <!-- Pagination -->
             <div id="advancedSearchPagination" class="pagination-container"></div>
           </div>
         </section>
+
       </main>
+
+      <!-- ==================================================================
+           MANGA READER (fixed overlay)
+      ================================================================== -->
+      <div id="reader" class="reader hidden">
+        <div class="reader-header">
+          <button id="closeReader" class="btn-close" title="Close reader">✕</button>
+          <div id="readerTitle" class="reader-title"></div>
+          <div class="reader-controls">
+            <!-- Zoom controls -->
+            <button id="zoomOut" class="btn-zoom" title="Zoom out">−</button>
+            <span id="zoomLevel" class="zoom-level">100%</span>
+            <button id="zoomIn" class="btn-zoom" title="Zoom in">+</button>
+            <button id="zoomReset" class="btn-zoom" title="Reset zoom">⊙</button>
+          </div>
+          <div class="reader-nav">
+            <button id="prevPage" class="btn-nav">◀ Prev</button>
+            <span id="pageCounter" class="page-info"></span>
+            <button id="nextPage" class="btn-nav">Next ▶</button>
+          </div>
+        </div>
+        <div id="pageWrap" class="reader-content"></div>
+      </div>
+
+      <!-- ==================================================================
+           CONTEXT MENU (right-click on library cards)
+      ================================================================== -->
+      <div id="contextMenu" class="context-menu hidden">
+        <button class="context-item" data-action="mark-read">Mark as Read</button>
+        <button class="context-item" data-action="mark-unread">Mark as Unread</button>
+        <div class="context-divider"></div>
+        <button class="context-item" data-action="remove">Remove from Library</button>
+      </div>
 
       <footer class="footer">
         <div class="footer-content">
@@ -332,6 +449,9 @@
       </footer>
     </div>
   </div>
+
+  <!-- Toast notification container -->
+  <div id="toastContainer" class="toast-container"></div>
 
   <script src="./app.js"></script>
 </body>

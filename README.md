@@ -1,20 +1,45 @@
-# 🎌 Manghu - Manga Web Reader
+# Manghu - Manga Web Reader
 
-A self-contained web-based manga reader with MangaDex support and extensible source system.
+A self-hosted web-based manga reader with MangaDex support, library tracking, analytics, and more.
 
-## ✨ Features
+## Features
 
-- 🔍 **Advanced Search**: Search manga with filters (genre, status, tags)
-- 📚 **Library Management**: Organize favorites and track reading progress
-- 📖 **Multiple Reading Modes**: LTR, RTL, and Webtoon scroll modes
-- 💾 **Progress Tracking**: Automatic bookmark saving and chapter marking
-- 🎨 **Modern UI**: Clean, responsive interface with dark theme
-- 🔌 **Extensible**: Support for custom manga sources
-- 🐳 **Docker Ready**: Easy deployment with Docker
+**Reading**
+- LTR, RTL, and Webtoon (vertical scroll) reading modes
+- Zoom controls (+/−/reset) with keyboard shortcuts
+- Automatic progress saving — resume from where you left off
+- Mark chapters as read, skip duplicates
 
-## 🚀 Quick Start
+**Library & Organization**
+- Add manga to your personal library
+- Set reading status per manga: Reading, Completed, On Hold, Plan to Read, Dropped
+- Filter your library by reading status
+- Create and manage custom lists (group manga however you like)
 
-### Local Installation
+**Discovery**
+- Quick search and Advanced Search with filters (order by, status, tags)
+- Random manga button
+- Personalized recommendations based on the genres in your library
+
+**Reviews & Ratings**
+- Rate manga with 1–5 stars
+- Write optional text reviews
+
+**Analytics & Achievements**
+- Track total chapters read, time spent reading, and daily streak
+- Status distribution chart (how much of your library is completed, reading, etc.)
+- 12 unlockable achievements with in-app notifications
+
+**Interface**
+- Dark and Light mode toggle (persisted across sessions)
+- Toast notifications for all actions
+- Responsive layout — works on mobile and desktop
+
+---
+
+## Quick Start
+
+### Local
 
 ```bash
 npm install
@@ -23,7 +48,7 @@ npm start
 
 Open: http://localhost:3000
 
-### Docker Deployment
+### Docker
 
 ```bash
 cd docker
@@ -32,202 +57,190 @@ docker compose up --build
 
 Open: http://localhost:3000
 
-## 📖 User Guide
+---
 
-### Basic Usage
+## User Guide
 
-1. **Search Manga**: Enter manga title in search bar and click "Search"
-2. **View Details**: Click on any manga card to see details and chapters
-3. **Read Chapters**: Click on a chapter to start reading
-4. **Add to Library**: Click "Add to Favorites" to save manga to your library
-5. **Continue Reading**: Use "Continue Reading" button to resume from last page
+### Searching for Manga
 
-### Reading Modes
+1. Enter a title in the search bar on the Home view and press Enter or click **Search**
+2. Click any result to open the manga detail page
+3. For filters (genre, status, tags, sort order) use **Advanced Search** in the sidebar
 
-- **LTR (Left-to-Right)**: Standard Western reading direction
-- **RTL (Right-to-Left)**: Traditional manga reading direction
-- **Webtoon**: Vertical scrolling for webtoons
+### Managing Your Library
 
-Change mode in Settings (⚙️).
+- On any manga detail page, click **Add to Library** to save it
+- Use the **Reading Status** dropdown on the detail page to track your progress
+- Go to **Library** in the sidebar to see all saved manga — use the filter to narrow by status
 
-### Advanced Search
+### Custom Lists
 
-Navigate to "Advanced Search" to use:
-- **Order By**: Sort by relevance, rating, follows, date, etc.
-- **Publication Status**: Filter by ongoing, completed, hiatus, cancelled
-- **Tags**: Filter by format, genre, theme, and content tags
+1. Go to **My Lists** in the sidebar
+2. Click **New List** to create a list with a name and optional description
+3. From any manga detail page, click **Add to List** to add it to an existing list
+4. Open a list to browse or remove items
 
-### Keyboard Shortcuts (Reader)
+### Reading a Chapter
 
-- **Right Arrow / Click Right**: Next page
-- **Left Arrow / Click Left**: Previous page
-- **ESC**: Close reader
+1. Open a manga and click any chapter from the chapter list
+2. Navigate pages with the arrow buttons or keyboard:
+   - `→` / `d` — next page
+   - `←` / `a` — previous page
+   - `Escape` — close reader
+   - `+` / `=` — zoom in
+   - `-` — zoom out
+3. Change reading mode (LTR/RTL/Webtoon) in **Settings** (⚙️)
 
-## 📚 Included Sources
+### Analytics
 
-### MangaDex (Pre-installed)
-- Thousands of manga in multiple languages
-- High-quality scans
-- Regular updates
-- Community translations
+Go to **Analytics** in the sidebar to see:
+- Chapters read, total reading time, and daily streak
+- Status distribution across your library
+- Recent reading sessions
+- Earned achievements
 
-## 🏗️ Project Structure
+---
+
+## Settings
+
+Access via the ⚙️ button in the sidebar.
+
+| Setting | Description |
+|---|---|
+| Reading Mode | LTR / RTL / Webtoon |
+| Hide Read Chapters | Only show unread chapters in chapter lists |
+| Skip Duplicate Chapters | Skip chapters with the same chapter number |
+| Pan Wide Images | Enable horizontal scroll for double-page spreads |
+| Clear Reading History | Reset all locally saved reading progress |
+
+---
+
+## Project Structure
 
 ```
 Manghu/
 ├── data/
-│   ├── sources/           # JavaScript source files
-│   │   └── mangadex.js   # MangaDex source implementation
-│   ├── store.json        # Persistent data (favorites, history)
-│   └── cache/            # Cached data
+│   ├── sources/           # Manga source scripts
+│   │   └── mangadex.js
+│   ├── store.json         # All persistent data (library, lists, analytics, etc.)
+│   └── cache/             # API cache
 ├── public/
-│   ├── index.html        # Main HTML file
-│   ├── styles.css        # Application styles
-│   └── app.js            # Frontend application logic
+│   ├── index.html         # App shell and views
+│   ├── styles.css         # Styles (dark/light themes, all components)
+│   └── app.js             # Frontend logic
 ├── docker/
-│   ├── Dockerfile        # Docker image configuration
+│   ├── Dockerfile
 │   └── docker-compose.yml
-├── server.js             # Express backend server
-├── package.json          # Node.js dependencies
-└── README.md             # Documentation
+├── server.js              # Express API server
+└── package.json
 ```
 
-## 🛠️ Development
+---
 
-### Creating Custom Sources
+## API Reference
 
-Create a new source file in `data/sources/yoursource.js`:
+### Content
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/source/:id/search` | Search manga. Body: `{ query, page, orderBy?, statuses?, tags? }` |
+| `POST` | `/api/source/:id/mangaDetails` | Get manga info. Body: `{ mangaId }` |
+| `POST` | `/api/source/:id/chapters` | Get chapter list. Body: `{ mangaId }` |
+| `POST` | `/api/source/:id/pages` | Get page images. Body: `{ chapterId }` |
+
+### Library
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/library` | Returns `{ favorites, history }` |
+| `POST` | `/api/favorites/toggle` | Add or remove from library |
+| `GET` | `/api/user/status` | Get all reading statuses |
+| `POST` | `/api/user/status` | Set status for a manga |
+
+### Reviews
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/reviews/:mangaId` | Get reviews for a manga |
+| `POST` | `/api/reviews` | Submit a review (`{ mangaId, rating, text }`) |
+
+### Custom Lists
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/lists` | Get all lists |
+| `POST` | `/api/lists` | Create a list |
+| `PUT` | `/api/lists/:id` | Rename/update a list |
+| `DELETE` | `/api/lists/:id` | Delete a list |
+| `POST` | `/api/lists/:id/manga` | Add manga to a list |
+| `DELETE` | `/api/lists/:id/manga/:mangaId` | Remove manga from a list |
+
+### Analytics & Achievements
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/analytics` | Get stats, status distribution, sessions |
+| `POST` | `/api/analytics/session` | Record a reading session |
+| `GET` | `/api/achievements` | Get unlocked achievements |
+| `POST` | `/api/achievements/unlock` | Unlock an achievement |
+
+---
+
+## Adding a Custom Source
+
+Create `data/sources/mysource.js`:
 
 ```javascript
 module.exports = {
   meta: {
-    id: "yoursource",
-    name: "Your Source Name",
+    id: "mysource",
+    name: "My Source",
     version: "1.0.0",
-    author: "Your Name",
-    icon: "https://example.com/icon.png"
+    author: "You",
+    icon: ""
   },
 
   async search(query, page) {
-    // Return: { results: [{ id, title, cover, author, ... }] }
+    // return { results: [{ id, title, cover, author, ... }] }
   },
 
   async mangaDetails(mangaId) {
-    // Return: { id, title, cover, author, description, genres, status, ... }
+    // return { id, title, cover, author, description, genres, status, ... }
   },
 
   async chapters(mangaId) {
-    // Return: { chapters: [{ id, name, date, ... }] }
+    // return { chapters: [{ id, name, date, ... }] }
   },
 
   async pages(chapterId) {
-    // Return: { pages: [{ img: "url" }] }
+    // return { pages: [{ img: "url" }] }
   }
 };
 ```
 
-Restart the server to auto-install the new source.
-
-### API Endpoints
-
-#### Get Application State
-```
-GET /api/state
-Returns: { repos, availableSources, installedSources }
-```
-
-#### Search Manga
-```
-POST /api/source/:sourceId/search
-Body: { query, page, orderBy?, statuses?, tags? }
-Returns: { results: [...] }
-```
-
-#### Get Manga Details
-```
-POST /api/source/:sourceId/mangaDetails
-Body: { mangaId }
-Returns: { id, title, cover, description, ... }
-```
-
-#### Get Chapters
-```
-POST /api/source/:sourceId/chapters
-Body: { mangaId }
-Returns: { chapters: [...] }
-```
-
-#### Get Pages
-```
-POST /api/source/:sourceId/pages
-Body: { chapterId }
-Returns: { pages: [{ img }] }
-```
-
-#### Library Operations
-```
-POST /api/favorites/toggle
-Body: { mangaId, sourceId, manga }
-
-GET /api/library
-Returns: { favorites, history }
-```
-
-## 🔧 Configuration
-
-### Settings (Accessible via ⚙️ button)
-
-- **Reading Mode**: LTR / RTL / Webtoon
-- **Hide Read Chapters**: Skip chapters already marked as read
-- **Skip Duplicate Chapters**: Automatically skip duplicate chapter numbers
-- **Pan Wide Images**: Enable horizontal scrolling for double-page spreads
-- **Clear Reading History**: Reset all reading progress
-
-### Data Storage
-
-All data is stored locally in:
-- `data/store.json`: Favorites and history
-- `localStorage`: User settings and reading progress
-
-## 🐛 Troubleshooting
-
-### Manga not loading
-- Check internet connection
-- Verify source is installed
-- Try refreshing the page
-
-### Images not displaying
-- MangaDex might be down temporarily
-- Check browser console for errors
-- Try a different chapter
-
-### Progress not saving
-- Check browser localStorage is enabled
-- Ensure cookies are not blocked
-- Try clearing browser cache
-
-## 📝 License
-
-MIT License - Feel free to use and modify
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
-## 🙏 Credits
-
-- MangaDex API for manga data
-- Open-source manga reading community
-
-## 📧 Support
-
-For issues and feature requests, please open an issue on GitHub.
+Restart the server — the source will be auto-installed.
 
 ---
 
-Made with ❤️ for manga readers worldwide
+## Data Storage
+
+| Location | What's stored |
+|---|---|
+| `data/store.json` | Library, history, reading status, reviews, lists, analytics, achievements |
+| `localStorage` | Settings, read chapters, reading progress |
+
+---
+
+## Troubleshooting
+
+**Manga not loading** — Check your internet connection and that the MangaDex source is installed.
+
+**Images not showing** — MangaDex may be temporarily unavailable. Check the browser console for errors.
+
+**Progress not saving** — Make sure localStorage is enabled in your browser and cookies aren't blocked.
+
+---
+
+## License
+
+MIT — free to use and modify.
