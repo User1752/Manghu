@@ -705,6 +705,8 @@ async function refreshState() {
     try {
       const localData = await api("/api/local/list");
       state.localManga = localData.localManga || [];
+      // Generate covers for any PDF manga that still has a .pdf cover
+      generateMissingPDFCovers();
     } catch (_) { state.localManga = []; }
 
     try {
@@ -826,9 +828,9 @@ function mangaCardHTML(m) {
   return `
     <div class="manga-card" data-manga-id="${escapeHtml(m.id)}">
       <div class="manga-card-cover">
-        ${m.cover
+        ${m.cover && !m.cover.endsWith('.pdf')
           ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy" referrerpolicy="no-referrer">`
-          : '<div class="no-cover">?</div>'}
+          : (m.cover ? '<div class="no-cover">&#128196;</div>' : '<div class="no-cover">?</div>')}
       </div>
       <div class="manga-card-info">
         <h3 class="manga-card-title">${escapeHtml(m.title)}</h3>
@@ -868,7 +870,7 @@ function renderHistoryView() {
     return `
       <div class="history-item" data-manga-id="${escapeHtml(m.id)}" data-source-id="${escapeHtml(m.sourceId || "")}">
         <div class="history-cover">
-          ${m.cover ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy">` : `<div class="no-cover">?</div>`}
+          ${m.cover && !m.cover.endsWith('.pdf') ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy">` : (m.cover ? `<div class="no-cover">&#128196;</div>` : `<div class="no-cover">?</div>`)}
         </div>
         <div class="history-info">
           <h3 class="history-title">${escapeHtml(m.title)}</h3>
@@ -1100,7 +1102,7 @@ function renderLibrary() {
     return `
       <div class="library-card" data-manga-id="${escapeHtml(manga.id)}" data-source-id="${escapeHtml(manga.sourceId || state.currentSourceId)}">
         <div class="library-card-cover">
-          ${manga.cover ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy">` : '<div class="no-cover">?</div>'}
+          ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy">` : (manga.cover ? '<div class="no-cover">&#128196;</div>' : '<div class="no-cover">?</div>')}
           ${statusBadge}
           <div class="library-card-overlay">
             <button class="btn-read">Continue Reading</button>
@@ -1123,7 +1125,7 @@ function renderLibrary() {
         return `
         <div class="library-card local-manga-card" data-manga-id="${escapeHtml(manga.id)}" data-source-id="local">
           <div class="library-card-cover">
-            ${manga.cover ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy">` : '<div class="no-cover">&#128214;</div>'}
+            ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy">` : '<div class="no-cover">&#128196;</div>'}
             <div class="local-badge">${escapeHtml((manga.type || 'local').toUpperCase())}</div>
             <button class="local-delete-btn" data-manga-id="${escapeHtml(manga.id)}" title="Delete local manga">&#128465;</button>
             <div class="library-card-overlay"><button class="btn-read">Read</button></div>
@@ -1293,6 +1295,39 @@ async function submitImport() {
     if (!resp.ok || !data.success) throw new Error(data.error || "Import failed");
 
     state.localManga.push(data.manga);
+
+    // For PDFs, render page 1 via PDF.js and upload as cover image
+    if (_importFile.name.toLowerCase().endsWith('.pdf') && window.pdfjsLib && data.manga?.id) {
+      try {
+        if (labelEl) labelEl.textContent = "Generating cover...";
+        const fileUrl = URL.createObjectURL(_importFile);
+        const pdf = await pdfjsLib.getDocument(fileUrl).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width  = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        URL.revokeObjectURL(fileUrl);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+        if (blob) {
+          const coverResp = await fetch(`/api/local/${data.manga.id}/cover`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'image/jpeg' },
+            body: blob
+          });
+          if (coverResp.ok) {
+            const coverData = await coverResp.json();
+            data.manga.cover = coverData.cover;
+            const idx = state.localManga.findIndex(m => m.id === data.manga.id);
+            if (idx !== -1) state.localManga[idx].cover = coverData.cover;
+          }
+        }
+      } catch (coverErr) {
+        console.warn('Cover generation failed:', coverErr);
+      }
+    }
+
     showToast("Imported!", data.manga.title, "success");
     setTimeout(() => {
       closeImportModal();
@@ -1303,6 +1338,36 @@ async function submitImport() {
     if (errorEl)    { errorEl.textContent = e.message; errorEl.classList.remove("hidden"); }
     if (submitBtn)  submitBtn.disabled = false;
   }
+}
+
+async function generateMissingPDFCovers() {
+  if (!window.pdfjsLib) return;
+  const pending = state.localManga.filter(m => m.cover && m.cover.endsWith('.pdf'));
+  for (const manga of pending) {
+    try {
+      const pdf = await pdfjsLib.getDocument(manga.cover).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement('canvas');
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+      if (!blob) continue;
+      const resp = await fetch(`/api/local/${manga.id}/cover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'image/jpeg' },
+        body: blob
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        manga.cover = data.cover;
+      }
+    } catch (e) {
+      console.warn(`Cover generation failed for ${manga.id}:`, e);
+    }
+  }
+  if (pending.length > 0) renderLibrary();
 }
 
 // ============================================================================
@@ -1455,6 +1520,54 @@ async function search(page = 1) {
   }
 }
 
+function toggleSourceSwitchDropdown(e) {
+  e.stopPropagation();
+  const dropdown = $("sourceSwitchDropdown");
+  if (!dropdown) return;
+  const isHidden = dropdown.classList.contains("hidden");
+  // Close any other open ones first
+  document.querySelectorAll(".source-switch-dropdown").forEach(d => d.classList.add("hidden"));
+  if (isHidden) {
+    // Rebuild items in case sources changed
+    const installed = Object.values(state.installedSources).filter(s => s.id !== state.currentSourceId);
+    if (installed.length === 0) { showToast("No other sources installed", "", "info"); return; }
+    const title = state.currentManga?.title || "";
+    dropdown.innerHTML = installed.map(s =>
+      `<button class="source-switch-item" onclick="switchToSourceSearch('${escapeHtml(s.id)}','${escapeHtml(title.replace(/'/g, "\\'"))}')">${escapeHtml(s.name)}</button>`
+    ).join("");
+    dropdown.classList.remove("hidden");
+    setTimeout(() => document.addEventListener("click", _closeSrcDropdown, { once: true }), 0);
+  }
+}
+
+function _closeSrcDropdown() {
+  document.querySelectorAll(".source-switch-dropdown").forEach(d => d.classList.add("hidden"));
+}
+
+async function switchToSourceSearch(sourceId, title) {
+  document.querySelectorAll(".source-switch-dropdown").forEach(d => d.classList.add("hidden"));
+  if (!title) return;
+  showToast(`Searching in ${state.installedSources[sourceId]?.name || sourceId}...`, title, "info");
+  try {
+    const result = await api(`/api/source/${sourceId}/search`, {
+      method: "POST",
+      body: JSON.stringify({ query: title, page: 1 })
+    });
+    const results = result.results || [];
+    if (results.length === 0) {
+      showToast("Not found", `"${title}" not found in ${state.installedSources[sourceId]?.name || sourceId}`, "info");
+      return;
+    }
+    // Switch source globally and open first result
+    state.currentSourceId = sourceId;
+    const selectors = [$("sourceSelect"), $("advancedSourceSelect")];
+    selectors.forEach(s => { if (s) s.value = sourceId; });
+    loadMangaDetails(results[0].id);
+  } catch (e) {
+    showToast("Error", e.message, "error");
+  }
+}
+
 async function loadMangaDetails(mangaId, fromView = "discover") {
   $("searchStatus").textContent = "Loading details...";
   try {
@@ -1476,13 +1589,13 @@ async function loadMangaDetails(mangaId, fromView = "discover") {
     // Render detail card
     $("details").innerHTML = `
       <div class="manga-details">
-        ${result.cover ? `
+        ${result.cover && !result.cover.endsWith('.pdf') ? `
           <div class="manga-cover">
             <a href="${escapeHtml(`https://anilist.co/search/manga?search=${encodeURIComponent(result.title)}`)}" target="_blank" rel="noopener noreferrer" class="cover-anilist-link" title="View on AniList" onclick="event.stopPropagation()">
               <img src="${escapeHtml(result.cover)}" alt="${escapeHtml(result.title)}">
               <div class="cover-anilist-hint">View on AniList</div>
             </a>
-          </div>` : ""}
+          </div>` : (result.cover ? `<div class="manga-cover"><div class="no-cover" style="height:100%;font-size:4rem;">&#128196;</div></div>` : "")}
         <div class="manga-info">
           <h2 class="manga-title">${escapeHtml(result.title)}</h2>
           ${result.altTitle ? `<p class="manga-alt-title">${escapeHtml(result.altTitle)}</p>` : ""}
@@ -1490,7 +1603,14 @@ async function loadMangaDetails(mangaId, fromView = "discover") {
           <div class="manga-meta">
             ${result.status ? `<span class="badge badge-${result.status === 'ongoing' ? 'success' : 'secondary'}">${escapeHtml(result.status)}</span>` : ""}
             ${result.year   ? `<span class="badge">📅 ${escapeHtml(String(result.year))}</span>` : ""}
-            <span class="badge badge-source">🌐 ${escapeHtml(state.installedSources[state.currentSourceId]?.name || state.currentSourceId)}</span>
+            <span class="source-switch-wrap">
+              <span class="badge badge-source source-switch-btn" id="sourceSwitchBtn" onclick="toggleSourceSwitchDropdown(event)" title="Switch source">🌐 ${escapeHtml(state.installedSources[state.currentSourceId]?.name || state.currentSourceId)} ▾</span>
+              <div class="source-switch-dropdown hidden" id="sourceSwitchDropdown">
+                ${Object.values(state.installedSources).filter(s => s.id !== state.currentSourceId).map(s =>
+                  `<button class="source-switch-item" onclick="switchToSourceSearch('${escapeHtml(s.id)}','${escapeHtml(result.title.replace(/'/g, "\\'"))}')">${escapeHtml(s.name)}</button>`
+                ).join('')}
+              </div>
+            </span>
           </div>
           ${result.genres?.length ? `
             <div class="manga-genres">
@@ -2293,9 +2413,13 @@ function toggleAutoScroll() {
 function renderPage() {
   if (!state.currentChapter?.pages) return;
 
-  // PDF mode: delegate to async PDF.js renderer
+  // PDF mode: delegate to async PDF.js renderer (respects reading mode)
   if (state.currentChapter.isPDF && state.pdfDocument) {
-    renderPDFPageToCanvas(state.currentPageIndex + 1);
+    if (state.settings.readingMode === 'webtoon') {
+      renderPDFWebtoon();
+    } else {
+      renderPDFPageToCanvas(state.currentPageIndex + 1);
+    }
     return;
   }
 
@@ -2544,6 +2668,57 @@ async function initPDFChapter(pdfUrl) {
   }
 }
 
+async function renderPDFWebtoon() {
+  const pageWrap = $('pageWrap');
+  if (!state.pdfDocument || !pageWrap) return;
+  const pdf = state.pdfDocument;
+  const total = pdf.numPages;
+  const zoomStyle = state.zoomLevel !== 1.0 ? `style="transform:scale(${state.zoomLevel});transform-origin:top center;"` : '';
+
+  pageWrap.className = 'reader-content reading-mode-webtoon';
+  pageWrap.innerHTML = `<div class="page-zoom-wrap webtoon-wrap" id="pdfWebtoonWrap" ${zoomStyle}></div>`;
+  const wrap = pageWrap.querySelector('#pdfWebtoonWrap');
+
+  $('pageCounter').textContent = `Webtoon Mode — ${total} pages`;
+  $('prevPage').style.display = 'none';
+  $('nextPage').style.display = 'none';
+  updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, 0);
+
+  for (let i = 1; i <= total; i++) {
+    try {
+      const page = await pdf.getPage(i);
+      const scale    = Math.max(state.zoomLevel, 1) * 1.5;
+      const viewport = page.getViewport({ scale });
+      const canvas   = document.createElement('canvas');
+      canvas.className = 'webtoon-page';
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.display = 'block';
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      // Abort if user navigated away
+      if (pageWrap !== $('pageWrap') || !pageWrap.querySelector('#pdfWebtoonWrap')) return;
+      wrap.appendChild(canvas);
+    } catch (e) {
+      console.warn(`PDF webtoon page ${i} error:`, e);
+    }
+  }
+
+  // Append chapter-end banner
+  const nextIdx  = getNextChapterIndex(state.currentChapterIndex);
+  const nextCh   = nextIdx < (state.allChapters?.length || 0) ? state.allChapters[nextIdx] : null;
+  const nextLabel = nextCh ? (nextCh.name || `Chapter ${nextCh.chapter || nextIdx + 1}`) : null;
+  pageWrap.insertAdjacentHTML('beforeend', `
+    <div class="chapter-end-wrap">
+      ${nextLabel
+        ? `<p class="chapter-end-label">Next Chapter</p>
+           <p class="chapter-end-name">${escapeHtml(nextLabel)}</p>
+           <button class="btn chapter-next-btn" onclick="goToNextChapter()">Read Next \u2192</button>`
+        : `<p class="chapter-end-label">You've reached the last chapter!</p>`}
+    </div>`);
+}
+
 async function renderPDFPageToCanvas(pageNum) {
   const pageWrap = $("pageWrap");
   if (!state.pdfDocument || !pageWrap) return;
@@ -2676,12 +2851,18 @@ function showSettings() {
     saveSettings();
     if (state.currentChapter) renderPage();
   };
-  $("clearReadBtn").onclick = () => {
+  $("clearReadBtn").onclick = async () => {
     if (confirm("Clear all reading history?")) {
+      try { await fetch("/api/history/clear", { method: "DELETE" }); } catch (_) {}
+      state.history = [];
       state.readChapters.clear();
+      state.flaggedChapters.clear();
+      state.lastReadPages = {};
+      state.lastReadChapter = {};
       saveSettings();
       if (state.currentManga) loadChapters();
       modal.remove();
+      renderLibrary();
       showToast("Reading history cleared", "", "info");
     }
   };

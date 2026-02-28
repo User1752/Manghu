@@ -18,353 +18,7 @@
       "installedAt": "2026-02-28T00:02:14.396Z"
     }
   },
-  "history": [
-    {
-      "id": "2/one-piece",
-      "title": "One Piece",
-      "cover": "/api/proxy-image?url=https%3A%2F%2Fcdn.readdetectiveconan.com%2Ffile%2Fmangapill%2Fi%2F2.webp%3Fh%3D01971742-5d7f-7f32-8d2b-d038279f8a73",
-      "description": "Gol D. Roger, a man referred to as the \"Pirate King,\" is set to be executed by the World Government. But just before his demise, he confirms the existence of a great treasure, One Piece, located somewhere within the vast ocean known as the Grand Line. Announcing that One Piece can be claimed by anyone worthy enough to reach it, the Pirate King is executed and the Great Age of Pirates begins.\n\nTwenty-two years later, a young man by the name of Monkey D. Luffy is ready to embark on his own adventure, searching for One Piece and striving to become the new Pirate King. Armed with just a straw hat, a small boat, and an elastic body, he sets out on a fantastic journey to gather his own crew and a worthy ship that will take them across the Grand Line to claim the greatest status on the high seas.\n\n[Written by MAL Rewrite]",
-      "status": "publishing",
-      "genres": [
-        "Action",
-        "Adventure",
-        "Comedy",
-        "Fantasy",
-        "Shounen",
-        "Super Power"
-      ],
-      "author": "",
-      "url": "https://mangapill.com/manga/2/one-piece",
-      "sourceId": "mangapill",
-      "chapterId": "2-10001000/one-piece-chapter-1",
-      "readAt": "2026-02-28T00:42:35.322Z"
-    },
-    {
-      "id": "6214/shiunji-ke-no-kodomotachi",
-      "title": "Shiunji-ke no Kodomotachi",
-      "cover": "/api/proxy-image?url=https%3A%2F%2Fcdn.readdetectiveconan.com%2Ffile%2Fmangapill%2Fi%2F6214.jpeg",
-      "description": "",
-      "status": "publishing",
-      "genres": [
-        "Comedy",
-        "Romance"
-      ],
-      "author": "",
-      "url": "https://mangapill.com/manga/6214/shiunji-ke-no-kodomotachi",
-      "sourceId": "mangapill",
-      "chapterId": "6214-10066000/shiunji-ke-no-kodomotachi-chapter-66",
-      "readAt": "2026-02-28T00:37:06.855Z"
-    },
-    {
-      "id": "9005/douyara-ore-wa-imadoki-gal-na-toshiue-osananajimi-kara-gekiomo-kanjou-wo-mukerareteiru-rashii",
-      "title": "Douyara Ore wa Imadoki Gal na Toshiue Osananajimi kara Gekiomo Kanjou wo Mukerareteiru Rashii",
-      "cover": "https://mangapill.com/api/proxy-image?url=https%3A%2F%2Fcdn.readdetectiveconan.com%2Ffile%2Fmangapill%2Fi%2F9005.jpeg%3Fh%3D0197f965-e74d-796d-ba02-968cb74b648a",
-      "description": "Yuuto Kujo discovers that his childhood friend Yuuki Suzuno, with whom he had an unrequited love for, is actually in love with his older brother. Being always compared to his better older brother is something he has become quite used to but he's not quite ready to give up. Meanwhile, Suzuno's older sister Yuuki Kano, a college student, unexpectedly begins to show some intense feelings for Yuuto!",
-      "status": "publishing",
-      "genres": [
-        "Comedy",
-        "Ecchi",
-        "Romance",
-        "School",
-        "Seinen"
-      ],
-      "author": "",
-      "url": "https://mangapill.com/manga/9005/douyara-ore-wa-imadoki-gal-na-toshiue-osananajimi-kara-gekiomo-kanjou-wo-mukerareteiru-rashii",
-      "sourceId": "mangapill",
-      "chapterId": "9005-10010000/douyara-ore-wa-imadoki-gal-na-toshiue-osananajimi-kara-gekiomo-kanjou-wo-mukerareteiru-rashii-chapter-10",
-      "readAt": "2026-02-28T00:28:54.496Z"
-    },
-    {
-      "id": "175e71fa-aa12-4a3e-89c9-298e64210f80",
-      "title": "\"Saikyou Status\" wo Hikitsuide Ningen ni Tensei Shita Seijuu Behemoth, Yuusha no Konyakusha (Ohimesama) wo Ukkari Netotteshimau",
-      "altTitle": "《最強ステータス》を引き継いで人間に転生した聖獣ベヒーモス、勇者の婚約者（お姫様）をうっかり寝取ってしまう",
-      "author": "Ginyoku Nozomi",
-      "description": "A kind-hearted holy beast, Behemoth, awakens to find itself in the afterlife. Honored for its achievements, it is granted the opportunity to reincarnate into the future as a human. Taking on the name \"Chrono,\" it resolves to live a new life as an adventurer. On the way to the imperial capital, Clarial, Chrono rescues an elf being attacked by bandits—only for the elf to offer their body as a token of gratitude...!?",
-      "cover": "https://uploads.mangadex.org/covers/175e71fa-aa12-4a3e-89c9-298e64210f80/54176e09-497c-465b-b0b8-c7dd9859198b.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2024,
-      "genres": [
-        "Reincarnation",
-        "Monsters",
-        "Action",
-        "Romance",
-        "Comedy",
-        "Adventure",
-        "Fantasy",
-        "Adaptation"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "33f12e7e-b8c2-40da-9dbf-f0ba3d5c886e",
-      "readAt": "2026-02-27T23:17:16.769Z"
-    },
-    {
-      "id": "bd6d0982-0091-4945-ad70-c028ed3c0917",
-      "title": "Mushoku Tensei: Isekai Ittara Honki Dasu",
-      "altTitle": "A Reencarnação do Vagabundo: Vou dar meu melhor se for para outro mundo",
-      "author": "Rifujin na Magonote",
-      "description": "A 34-year-old NEET gets killed in a traffic accident and finds himself in a world of magic. Rather than waking up as a full-grown mage, he gets reincarnated as a newborn baby, retaining the memories of his past life. Before he can even properly move his body, he resolves to never make the same mistakes he made in his first life ever again and instead live a life with no regrets with the new one that was given to him. Because he has the knowledge of a middle-aged man, by the age of two, he has already become a prodigy and possesses power unthinkable for anyone his age and even older. Thus begins the chronicles of Rudeus Greyrat, son of swordsman Paul and healer Zenith, as he enters a new world to become the strongest mage known to man, with powers rivaling even the gods themselves.",
-      "cover": "https://uploads.mangadex.org/covers/bd6d0982-0091-4945-ad70-c028ed3c0917/7a0f2758-07c4-45da-8d11-a42038f66c29.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2014,
-      "genres": [
-        "Reincarnation",
-        "Action",
-        "Romance",
-        "Comedy",
-        "Adventure",
-        "Magic",
-        "Harem",
-        "Isekai",
-        "Drama",
-        "Fantasy",
-        "Adaptation"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "88498a17-d441-4212-a375-392d126235d4",
-      "readAt": "2026-02-27T23:05:16.940Z"
-    },
-    {
-      "id": "d41fe947-2e33-4b26-ac29-abc70fb08edb",
-      "title": "Bìzuǐ Èlóng Wǒ Bùxiǎng Zài Gēn Nǐ Dài Háizi Le",
-      "altTitle": "闭嘴恶龙我不想再跟你带孩子了",
-      "author": "Milkshake tail sauce",
-      "description": "After being defeated and captured, the dragon slayer Leon became a captive of the Silver Dragon Queen. With the awareness of death, he used forbidden magic to curse the queen, but unexpectedly, the queen lost control. \n\nHe thought that this would make the queen live with shame for the rest of her life, and it would be worthy of the dragon slayer's mission. \n\nBut two years later, when Leon opened his eyes, next to him was a little dragon girl with a tail...",
-      "cover": "https://uploads.mangadex.org/covers/d41fe947-2e33-4b26-ac29-abc70fb08edb/90236063-df32-4fe1-b801-f65d7ee2e17d.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2024,
-      "genres": [
-        "Action",
-        "Long Strip",
-        "Romance",
-        "Comedy",
-        "Adventure",
-        "Magic",
-        "Drama",
-        "Fantasy",
-        "Web Comic",
-        "Adaptation",
-        "Full Color"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "960c2325-0050-4e54-8d81-a7ef3e803ff9",
-      "readAt": "2026-02-27T22:55:52.176Z"
-    },
-    {
-      "id": "local-36bafddcd4ba",
-      "title": "Dragon Ball   001",
-      "cover": "/local-media/local-36bafddcd4ba/original.pdf",
-      "description": "Imported on 2/27/2026",
-      "status": "completed",
-      "genres": [],
-      "author": "",
-      "sourceId": "local",
-      "chapterId": "local-36bafddcd4ba:0",
-      "readAt": "2026-02-27T22:52:46.522Z"
-    },
-    {
-      "id": "c4ca02fb-8378-433b-8049-fbbea5d25cba",
-      "title": "Haimiya-senpai wa Kowakute Kawaii",
-      "altTitle": "灰宮先輩は怖くてかわいい",
-      "author": "Kamiyama Sumu (神山すむ)",
-      "description": "At my high school, Haimiya-senpai is feared by all and considered too scary. This is apparently due to her intimidating appearance and blunt way of speaking... and those sparkling piercings! The long, gray wolf-cut hair! Even her Kansai accent is intimidating!!!\nBut for some reason, this scary senpai treats me kindly...?\nAs \"scary\" turns into \"cute,\" this scary (heart-pounding) senpai rom-com begins!",
-      "cover": "https://uploads.mangadex.org/covers/c4ca02fb-8378-433b-8049-fbbea5d25cba/5d374e1c-d2cf-447a-bb95-5009e08cea11.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2025,
-      "genres": [
-        "Romance",
-        "Comedy",
-        "Drama",
-        "School Life",
-        "Slice of Life"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "5ece850e-9ff5-40f4-87b0-dcbc2bd3f6e8",
-      "readAt": "2026-02-27T22:44:47.574Z"
-    },
-    {
-      "id": "76424fe0-ec26-400c-a0c9-93a17114a4ae",
-      "title": "My Favorite VTuber Is Scary IRL",
-      "altTitle": "Haitatsusaki no Onee-san ga Kowa Sugiru",
-      "author": "Yorima Riyo",
-      "description": "An introverted part-time food delivery guy working in the countryside receives a food delivery order. When he reaches the delivery address, he discovers that the recipient is a tall and intimidating-like woman. However, as the story unfolds, he eventually discovers…",
-      "cover": "https://uploads.mangadex.org/covers/76424fe0-ec26-400c-a0c9-93a17114a4ae/9a8eafc9-218f-462b-ac4c-29dae306931e.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2023,
-      "genres": [
-        "Romance",
-        "Comedy",
-        "Drama",
-        "Web Comic",
-        "Slice of Life"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "113f6640-9686-4dc4-ace3-6349fa2cb0f9",
-      "readAt": "2026-02-27T21:59:40.382Z"
-    },
-    {
-      "id": "801513ba-a712-498c-8f57-cae55b38cc92",
-      "title": "Berserk",
-      "altTitle": "ベルセルク",
-      "author": "Miura Kentarou",
-      "description": "Guts, known as the Black Swordsman, seeks sanctuary from the demonic forces attracted to him and his woman because of a demonic mark on their necks, and also vengeance against the man who branded him as an unholy sacrifice. Aided only by his titanic strength gained from a harsh childhood lived with mercenaries, a gigantic sword, and an iron prosthetic left hand, Guts must struggle against his bleak destiny, all the while fighting with a rage that might strip him of his humanity.\n___\nWon the 6th Osamu Tezuka Cultural Prize Excellence Award in 2002.\n\nNote: Following Miura Kenta's death in 2021, the series has been taken over by Kouji Mori, who supervises the series with art done by Studio Gaga.",
-      "cover": "https://uploads.mangadex.org/covers/801513ba-a712-498c-8f57-cae55b38cc92/81e1c82d-6672-400c-8c58-4ff9bfb89031.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 1989,
-      "genres": [
-        "Award Winning",
-        "Monsters",
-        "Action",
-        "Demons",
-        "Psychological",
-        "Adventure",
-        "Sexual Violence",
-        "Military",
-        "Philosophical",
-        "Gore",
-        "Drama",
-        "Horror",
-        "Fantasy"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "960a0883-11e2-4c51-9ae2-d44e475aee5b",
-      "readAt": "2026-02-27T16:49:54.626Z"
-    },
-    {
-      "id": "1fc3d326-c037-43fa-8953-ed52a56caa18",
-      "title": "Osoraku Kanojo wa Ore no Aniki wo Neratteru",
-      "altTitle": "おそらくカノジョは俺の兄貴を狙ってる",
-      "author": "Ise Maruno",
-      "description": "A high school guy who doesn't trust girls anymore has been tricked too many times by girls who just wanted to get close to his good-looking older brother. After all that, he decides he'll never trust a girl again. But then, a pretty girl in his class suddenly starts talking to him a lot. Is she just trying to get to his brother too...? Or does she actually mean something else?",
-      "cover": "https://uploads.mangadex.org/covers/1fc3d326-c037-43fa-8953-ed52a56caa18/7c5576a8-3f69-44a6-a4af-1466d36fe5ab.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2025,
-      "genres": [
-        "Romance",
-        "Comedy",
-        "School Life",
-        "Slice of Life"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "d1870abb-aeea-4e7b-a5a8-f4993549d88a",
-      "readAt": "2026-02-27T16:18:27.320Z"
-    },
-    {
-      "id": "36e01733-448f-4f06-b5e4-8acba673825c",
-      "title": "Peerless Martial Spirit (Reboot)",
-      "altTitle": "绝世武魂 (2021)",
-      "author": "Palm Reading (掌阅文化)",
-      "description": "The Dragon Pulse Continent (or “Longmai” Continent) is home to millions of clans, countless sects and martial artists. Strong people have the ability to manoeuvre the land, whilst the weak can only crawl like ants. A young man, Chen Feng, with a core like iron, was unable to cultivate and was treated by cold eyes. But then he found the divine Dragon’s Blood and a mysterious ancient cauldron, and from then on he rose against the odds and emerged into the eyes of the world! Beautiful demon foxes, cold and highly empresses, demon clan princesses and divine clan princesses will all be in my arms. I will cultivate the supreme inheritance, condense the strongest martial soul, embrace all beauties, and stand proudly high up above the clouds.",
-      "cover": "https://uploads.mangadex.org/covers/36e01733-448f-4f06-b5e4-8acba673825c/2dde2671-f1d6-4bc2-9999-16c1c7e5253a.jpg.512.jpg",
-      "status": "hiatus",
-      "year": 2020,
-      "genres": [
-        "Historical",
-        "Action",
-        "Long Strip",
-        "Romance",
-        "Adventure",
-        "Wuxia",
-        "Drama",
-        "Fantasy",
-        "Web Comic",
-        "Supernatural",
-        "Adaptation",
-        "Full Color"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "542c9e2c-b175-436e-b38c-fc45a70d282f",
-      "readAt": "2026-02-20T15:43:35.345Z"
-    },
-    {
-      "id": "27b47848-26af-495f-bbcf-7f1bc5fc0284",
-      "title": "Erika Won't Back Down",
-      "altTitle": "えりかちゃんは絶対に負けない!",
-      "author": "Sakino Yumeko",
-      "description": "Faced with a life-threatening crisis, a game addict who lives in a poor household, Inarikawa Erika, decided to take the matter into her own hands. With a sweet proposal from her long-time gaming friend, promising a one-time huge-paying job, she takes the plunge into the underworld. Where she also finds love for the first time in the most unlikely place.",
-      "cover": "https://uploads.mangadex.org/covers/27b47848-26af-495f-bbcf-7f1bc5fc0284/5f59b082-12c5-4436-ada6-f638fef118d9.jpg.512.jpg",
-      "status": "ongoing",
-      "year": 2024,
-      "genres": [
-        "Psychological",
-        "Romance",
-        "Comedy",
-        "Crime",
-        "Mafia",
-        "Self-Published",
-        "Video Games",
-        "Drama",
-        "School Life",
-        "Supernatural"
-      ],
-      "lastChapter": null,
-      "sourceId": "mangadex",
-      "chapterId": "de195ac9-b8be-4e8f-ae9f-5a1372ef11dc",
-      "readAt": "2026-02-19T23:13:26.591Z"
-    },
-    {
-      "id": "f7888782-0727-49b0-95ec-a3530c70f83b",
-      "title": "Hajime no Ippo",
-      "author": "Morikawa George",
-      "description": "Makunouchi Ippo is an ordinary high school student in Japan. Since he spends most of his time away from school helping his mother run the family business, he doesn't get to enjoy his younger years like most teenagers. Always a target for bullying at school, Ippo's life is one of hardship. One of these after-school bullying sessions turns Ippo's life around for the better, as he is saved by a boxer named Takamura. He decides to follow in Takamura's footsteps and train to become a boxer, giving his life direction and purpose. Ippo's path to perfecting his pugilistic prowess is just beginning.\n___\nOfficial Release:\n- Indonesian release by Level Comics as **Fight!! Ippo** (2006-ongoing)",
-      "cover": "https://uploads.mangadex.org/covers/f7888782-0727-49b0-95ec-a3530c70f83b/8ebf0c88-0f84-4fa0-abaf-0e2f8ebdf91e.jpg.512.jpg",
-      "status": "ongoing",
-      "sourceId": "mangadex",
-      "chapterId": "fb7c4202-75d9-4414-8e4b-25e718c066b7",
-      "readAt": "2026-02-19T00:31:24.208Z"
-    },
-    {
-      "id": "54abaa64-b5f0-4936-a340-236ec7a93abe",
-      "title": "Newaza Ippon",
-      "author": "Fujisaki Kou",
-      "description": "Keita has yet to grasp his true feelings when it comes to his kouhai, Saijou. His twin brother Karen, who is honest about himself, lets Keita know that what he feels isn't just care and respect, but love. Will Keita realize that his action towards Saijou isn't a joke but what he truly feels…?",
-      "cover": "https://uploads.mangadex.org/covers/54abaa64-b5f0-4936-a340-236ec7a93abe/10c758fe-3213-4ed4-8205-b1ed752b8ce6.jpg.512.jpg",
-      "status": "completed",
-      "sourceId": "mangadex",
-      "chapterId": "04f3528b-e96c-437e-b552-dc0de7c15dcc",
-      "readAt": "2026-02-08T20:39:01.803Z"
-    },
-    {
-      "id": "e1e38166-20e4-4468-9370-187f985c550e",
-      "title": "Mato Seihei no Slave",
-      "author": "Takahiro",
-      "description": "The demon-filled dimension known as \"Mato\" has opened to threaten humanity, and a type of \"peach\" tree that grows there yields fruit that confers special powers to those who eat it, giving humanity a fighting chance, but this only works for women. As such, as protectors of humanity, women rise in social status while men are relegated to second-class citizens scraping for basic occupation and acknowledgment.   \n  \nCue Yuuki Wakura, a domestically crafty and laborious high school senior whose older sister was taken during a Mato event 5 years before; while lamenting the hardships of the life ahead of him, an event opens before him, and while being rescued from demons by Captain Kyouka of the Anti-Demon Corps, she confers him powers as her \"slave\" and turns him into a mighty beast mount that mows down the demons.   \n  \nHowever, there is a surprising price to pay for being her \"slave\"... and it's not him who has to pay it.",
-      "cover": "https://uploads.mangadex.org/covers/e1e38166-20e4-4468-9370-187f985c550e/2be188ee-25b5-4a4f-9581-f3c0febf458d.jpg.512.jpg",
-      "status": "ongoing",
-      "sourceId": "mangadex",
-      "chapterId": "09815f8d-bd25-4a9f-bc3e-d187bffe1df9",
-      "readAt": "2026-02-08T20:36:32.048Z"
-    },
-    {
-      "id": "1389d660-b9b1-4c6a-81af-eab4dbf3f22b",
-      "title": "Isekai Meikyuu de Harem wo",
-      "author": "Sogano Shachi",
-      "description": "A man was about to commit suicide and decides to search for a way to die in the internet, but then he found an odd site that asked a lot of questions and had a point based system that allows you to create skills and abilities for a character. He took interest in it and when he finished setting his character he was asked: \"You will now be transported to a world with the settings you choose, coming back is not possible, do you still accept?\" Without thinking much of it he pressed YES and found himself in another world with the skills and abilities he chose to have.",
-      "cover": "https://uploads.mangadex.org/covers/1389d660-b9b1-4c6a-81af-eab4dbf3f22b/950599ce-fe8c-4e60-b982-d7d2b864e50d.jpg.512.jpg",
-      "status": "ongoing",
-      "sourceId": "mangadex",
-      "chapterId": "a46e0446-b70a-4e8c-8ac3-6bbbc1d4ec05",
-      "readAt": "2026-02-08T20:36:00.643Z"
-    },
-    {
-      "id": "003ef8e4-0ae6-4dfe-8195-cd42a8cf37dc",
-      "title": "High School Boy",
-      "author": "Park Gee/Ji (박지)",
-      "description": "Hong Il-tak, the only red spot at Daemun Namgo. Despite his name and nickname, he's a boy, and his dwarfism and peculiar appearance have led to him being looked down upon by everyone from the nerds to the elders, and he's at the bottom of the school hierarchy. \n\nIn the past, until his sophomore year, Iltak had been a famous member of the Iljin, but a problem of his own brought him to the bottom of the food chain... \n\n\"His secondary sexuality. If only he'd come to me...!\" \n\nAfter enduring daily teasing and bullying because his body stopped growing like his peers, Hong Il-taek thought of a way to move up in the ranks... \n\n\"If I can befriend this guy, who's in the second grade at Dae-moon Boys' High School, I'll be able to move up again!\" \n\nBut for some reason, Lee Hyun-woo tries to keep his distance from Hong Il-taek... Can Hong Il-taek find his former glory again?",
-      "cover": "https://uploads.mangadex.org/covers/003ef8e4-0ae6-4dfe-8195-cd42a8cf37dc/df98b3a9-bddd-4dd2-81cd-23a1618e38fc.png.512.jpg",
-      "status": "ongoing",
-      "sourceId": "mangadex",
-      "chapterId": "d9b22842-1b6e-4ca4-811d-da3e98b256ae",
-      "readAt": "2026-02-02T00:18:08.624Z"
-    }
-  ],
+  "history": [],
   "readingStatus": {},
   "reviews": {
     "02860cdf-1020-40f1-a23f-2025d80f6290": [
@@ -373,13 +27,32 @@
         "text": "",
         "date": "2026-02-27T22:45:19.770Z"
       }
+    ],
+    "local-08a36b85ba55": [
+      {
+        "rating": 10,
+        "text": "",
+        "date": "2026-02-28T01:49:55.031Z"
+      }
     ]
   },
   "customLists": [],
   "analytics": {
-    "totalChaptersRead": 38,
-    "totalTimeSpent": 22.6,
+    "totalChaptersRead": 40,
+    "totalTimeSpent": 24.000000000000004,
     "readingSessions": [
+      {
+        "mangaId": "local-08a36b85ba55",
+        "chapterId": "local-08a36b85ba55:0",
+        "duration": 1.3,
+        "date": "2026-02-28T01:49:50.965Z"
+      },
+      {
+        "mangaId": "9005/douyara-ore-wa-imadoki-gal-na-toshiue-osananajimi-kara-gekiomo-kanjou-wo-mukerareteiru-rashii",
+        "chapterId": "9005-10011000/douyara-ore-wa-imadoki-gal-na-toshiue-osananajimi-kara-gekiomo-kanjou-wo-mukerareteiru-rashii-chapter-11",
+        "duration": 0.1,
+        "date": "2026-02-28T01:39:18.674Z"
+      },
       {
         "mangaId": "2/one-piece",
         "chapterId": "2-10001000/one-piece-chapter-1",

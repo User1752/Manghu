@@ -386,6 +386,22 @@ app.get('/api/local/list', async (_req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/local/:mangaId/cover', express.raw({ type: 'image/*', limit: '5mb' }), async (req, res) => {
+  try {
+    const sid = safeId(req.params.mangaId);
+    if (!sid) return res.status(400).json({ error: 'Invalid ID' });
+    const mangaDir = path.join(LOCAL_DIR, sid);
+    const metaPath = path.join(mangaDir, 'meta.json');
+    if (!fs.existsSync(metaPath)) return res.status(404).json({ error: 'Not found' });
+    const coverPath = path.join(mangaDir, 'cover.jpg');
+    await fsp.writeFile(coverPath, req.body);
+    const meta = JSON.parse(await fsp.readFile(metaPath, 'utf8'));
+    meta.cover = `/local-media/${sid}/cover.jpg`;
+    await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8');
+    res.json({ success: true, cover: meta.cover });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/api/local/:mangaId', async (req, res) => {
   try {
     const sid = safeId(req.params.mangaId);
@@ -559,6 +575,17 @@ app.post("/api/history/remove", async (req, res) => {
     store.history = store.history.filter(m => !(m.id === mangaId && m.sourceId === sourceId));
     await writeStore(store);
     res.json({ ok: true, history: store.history });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/history/clear", async (_req, res) => {
+  try {
+    const store = await readStore();
+    store.history = [];
+    await writeStore(store);
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
