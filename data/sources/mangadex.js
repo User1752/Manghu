@@ -1,5 +1,16 @@
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
+// Build MangaDex order query param from an orderBy string like 'followedCount', '-title', 'latestUploadedChapter'
+function buildOrderParam(orderBy, fallback = 'followedCount') {
+  if (!orderBy || orderBy === 'relevance') return `order[${fallback}]=desc`;
+  const desc = orderBy.startsWith('-');
+  const key  = desc ? orderBy.slice(1) : orderBy;
+  const dir  = desc ? 'desc' : 'asc';
+  // MangaDex descending makes more sense for most fields except title/year
+  const autoDir = ['title', 'year'].includes(key) ? dir : 'desc';
+  return `order[${key}]=${autoDir}`;
+}
+
 function mapManga(manga) {
   const coverRel = manga.relationships.find(r => r.type === "cover_art");
   const authorRel = manga.relationships.find(r => r.type === "author");
@@ -29,14 +40,15 @@ module.exports = {
     author: "MangaDex API"
   },
 
-  async search(query, page = 1) {
+  async search(query, page = 1, orderBy = '') {
     const limit = 50;
     const offset = (page - 1) * limit;
+    const orderParam = buildOrderParam(orderBy, 'followedCount');
     let url;
-    if (!query || query === "*") {
-      url = `https://api.mangadex.org/manga?limit=${limit}&offset=${offset}&includes[]=cover_art&includes[]=author&order[followedCount]=desc`;
+    if (!query || query === '*') {
+      url = `https://api.mangadex.org/manga?limit=${limit}&offset=${offset}&includes[]=cover_art&includes[]=author&${orderParam}`;
     } else {
-      url = `https://api.mangadex.org/manga?title=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&includes[]=cover_art&includes[]=author`;
+      url = `https://api.mangadex.org/manga?title=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&includes[]=cover_art&includes[]=author&${orderParam}`;
     }
     const data = await mdFetch(url);
     return {
@@ -86,7 +98,18 @@ module.exports = {
     };
   },
 
-  async byGenres(genres) {
+  async byGenres(genres, orderBy = '') {
+    // Aliases: our genre name → MangaDex tag name (lowercase)
+    const aliases = {
+      "shoujo ai":      "girls' love",
+      "shounen ai":     "boys' love",
+      "gender bender":  "gender swap",
+      "sci-fi":         "sci-fi",
+      "one shot":       "oneshot",
+      "school life":    "school life",
+      "slice of life":  "slice of life",
+      "martial arts":   "martial arts",
+    };
     // Fetch full tag list to resolve names -> UUIDs
     const tagData = await mdFetch(`https://api.mangadex.org/manga/tag`);
     const tagMap = {};
@@ -95,16 +118,21 @@ module.exports = {
       if (name) tagMap[name] = t.id;
     }
     const tagIds = genres
-      .map(g => tagMap[g.toLowerCase()])
+      .map(g => {
+        const key = g.toLowerCase();
+        const mapped = aliases[key] || key;
+        return tagMap[mapped];
+      })
       .filter(Boolean)
       .slice(0, 5);
 
+    const orderParam = buildOrderParam(orderBy, 'followedCount');
     let url;
     if (tagIds.length === 0) {
-      url = `https://api.mangadex.org/manga?limit=50&includes[]=cover_art&includes[]=author&order[followedCount]=desc&hasAvailableChapters=true`;
+      url = `https://api.mangadex.org/manga?limit=50&includes[]=cover_art&includes[]=author&${orderParam}&hasAvailableChapters=true`;
     } else {
       const tagParams = tagIds.map(id => `includedTags[]=${id}`).join('&');
-      url = `https://api.mangadex.org/manga?limit=50&includes[]=cover_art&includes[]=author&order[followedCount]=desc&includedTagsMode=OR&${tagParams}&hasAvailableChapters=true`;
+      url = `https://api.mangadex.org/manga?limit=50&includes[]=cover_art&includes[]=author&${orderParam}&includedTagsMode=OR&${tagParams}&hasAvailableChapters=true`;
     }
     const data = await mdFetch(url);
     return { results: (data.data || []).map(mapManga) };

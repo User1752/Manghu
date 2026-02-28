@@ -271,7 +271,8 @@ const state = {
     readingMode: "ltr",
     skipReadChapters: false,
     skipDuplicates: true,
-    panWideImages: false
+    panWideImages: false,
+    lineSharpness: 0
   },
 
   // --- New feature state ---
@@ -754,10 +755,14 @@ function renderSourceSelect() {
     sel.value = state.currentSourceId;
     sel.onchange = () => { 
       state.currentSourceId = sel.value;
-      // Reload homepage content when source changes
-      loadPopularToday();
-      loadRecentlyAdded();
-      loadLatestUpdates();
+      if (state.currentView === 'advanced-search') {
+        advancedSearch();
+      } else {
+        // Reload homepage content when source changes
+        loadPopularToday();
+        loadRecentlyAdded();
+        loadLatestUpdates();
+      }
     };
   }
 }
@@ -1679,11 +1684,15 @@ async function loadMangaDetails(mangaId, fromView = "discover") {
             </button>
             <button class="btn btn-start-reading-detail" id="startReadingBtn">&#9654; Start Reading</button>
             ${hasProgress ? `<button class="btn btn-continue" id="continueReadingBtn">Continue</button>` : ""}
+            ${fromView === 'random' ? `<button class="btn btn-reroll" id="rerollBtn" title="Pick another random manga">🎲 Reroll</button>` : ""}
           </div>
           <div id="detailRatingWrap" class="detail-rating-wrap"></div>
         </div>
       </div>
     `;
+
+    // Reroll random
+    if ($('rerollBtn')) $('rerollBtn').onclick = () => randomManga();
 
     // Favorites toggle
     $("addFavBtn").onclick = async () => {
@@ -1951,7 +1960,7 @@ async function loadChapter(chapterId, chapterName, chapterIndex, startPageIndex 
 
     const maxIndex = Math.max((state.currentChapter.pages?.length || 1) - 1, 0);
     state.currentPageIndex = Math.min(Math.max(startPageIndex, 0), maxIndex);
-    state.zoomLevel = 1.0;
+    // Keep zoom level between chapters — only reset if it was never set
 
     markChapterAsRead(state.currentManga.id, chapterId);
     state.readerSessionStart = Date.now();
@@ -2729,19 +2738,87 @@ function renderPage() {
 let _bookFlipAnimating = false;
 
 function getBookSpread(idx, pages) {
-  // Manga RTL: right panel = pages[idx], left panel = pages[idx+1]
+  const page = pages[idx];
+  // Wide (double-page scan): same image fills both panels, each showing one half
+  if (page?.isWide) {
+    return { right: page.img || null, left: page.img || null, isWide: true };
+  }
   return {
     right: pages[idx]?.img     || null,
-    left:  pages[idx + 1]?.img || null
+    left:  pages[idx + 1]?.img || null,
+    isWide: false,
   };
 }
 
 // LTR (Western) spread: left = pages[idx], right = pages[idx+1]
 function getLTRSpread(idx, pages) {
+  const page = pages[idx];
+  if (page?.isWide) {
+    return { left: page.img || null, right: page.img || null, isWide: true };
+  }
   return {
     left:  pages[idx]?.img     || null,
-    right: pages[idx + 1]?.img || null
+    right: pages[idx + 1]?.img || null,
+    isWide: false,
   };
+}
+
+// After rendering a spread, check whether the idx page image is a wide double-page scan.
+// RTL: pages[idx] is on the right panel. LTR: pages[idx] is on the left panel.
+// If wide, mutate both panels in-place to show left/right halves of the same source.
+// After rendering a spread, probe both panel images.
+// If either is landscape (wider than tall) it is a double-page scan —
+// overlay it as ONE full-spread image covering both panels.
+function _applyWideSplitIfNeeded(idx, pages) {
+  const spread = $('bookSpread');
+  if (!spread) return;
+
+  let applied = false;
+
+  const imgs = [
+    document.querySelector('#bookRight img.book-page-img'),
+    document.querySelector('#bookLeft  img.book-page-img'),
+  ].filter(Boolean);
+
+  imgs.forEach(imgEl => {
+    const check = () => {
+      if (applied) return;
+      if (state.currentPageIndex !== idx) return;
+      if (imgEl.naturalWidth <= imgEl.naturalHeight) return; // portrait, skip
+
+      applied = true;
+      const src = imgEl.src;
+      if (pages[idx]) pages[idx].isWide = true;
+
+      // Remove any previous overlay
+      const old = document.getElementById('bookWideOverlay');
+      if (old) old.remove();
+
+      // Full-spread overlay with the wide image shown at natural aspect ratio
+      const overlay = document.createElement('div');
+      overlay.className = 'book-wide-overlay';
+      overlay.id = 'bookWideOverlay';
+      const wImg = document.createElement('img');
+      wImg.src = src;
+      overlay.appendChild(wImg);
+      spread.appendChild(overlay);
+
+      // Fade in only once the image is decoded — no flash of blank overlay
+      const showOverlay = () => requestAnimationFrame(() => overlay.classList.add('visible'));
+      if (wImg.complete) showOverlay();
+      else wImg.addEventListener('load', showOverlay, { once: true });
+
+      // Fix counter (1 page consumed) and nav buttons
+      const total = pages.length;
+      const ctr = $('pageCounter');
+      if (ctr) ctr.textContent = `${idx + 1} / ${total}`;
+      const nx = $('nextPage');
+      if (nx) nx.disabled = idx + 1 >= total;
+    };
+
+    if (imgEl.complete && imgEl.naturalWidth > 0) check();
+    else imgEl.addEventListener('load', check, { once: true });
+  });
 }
 
 function renderBookSpread() {
@@ -2750,44 +2827,42 @@ function renderBookSpread() {
   const pageWrap = $("pageWrap");
   if (!pageWrap) return;
 
-  // Snap to even index
-  if (state.currentPageIndex % 2 !== 0)
-    state.currentPageIndex = Math.max(0, state.currentPageIndex - 1);
-
   const idx   = state.currentPageIndex;
   const total = pages.length;
-  const { right: rightImg, left: leftImg } = getBookSpread(idx, pages);
+
+  const spread = getBookSpread(idx, pages);
+  const { right: rightImg, left: leftImg, isWide } = spread;
 
   const zoom = state.zoomLevel ?? 1.0;
-  pageWrap.className = "reader-content reading-mode-rtl";
-  // Allow scrolling in both axes when zoomed in
-  pageWrap.style.overflow = zoom > 1.0 ? "auto" : "";
+  pageWrap.className = 'reader-content reading-mode-rtl' + _sharpClass();
+  pageWrap.style.overflow = '';
 
+  const step = isWide ? 1 : 2;
   const pv = $("prevPage"), nx = $("nextPage");
   if (pv) { pv.style.display = "block"; pv.disabled = idx === 0; }
-  if (nx) { nx.style.display = "block"; nx.disabled = idx + 2 >= total; }
+  if (nx) { nx.style.display = "block"; nx.disabled = idx + step >= total; }
 
   const r = idx + 1, l = idx + 2;
-  $("pageCounter").textContent = l <= total ? `${r}-${l} / ${total}` : `${r} / ${total}`;
+  $("pageCounter").textContent = isWide
+    ? `${r} / ${total}`
+    : (l <= total ? `${r}-${l} / ${total}` : `${r} / ${total}`);
 
-  const wrapZoomStyle = zoom !== 1.0
-    ? `style="transform:scale(${zoom});transform-origin:top center;"`
-    : "";
+  const wrapZoomStyle = '';
+
+  // RTL: right panel reads first. For wide page: right half on right, left half on left.
+  const rightHtml = rightImg
+    ? `<img class="book-page-img${isWide ? ' wide-split-right' : ''}" src="${escapeHtml(rightImg)}" alt="Page ${idx + 1}">`
+    : `<div class="book-page-blank"></div>`;
+  const leftHtml = leftImg
+    ? `<img class="book-page-img${isWide ? ' wide-split-left' : ''}" src="${escapeHtml(leftImg)}" alt="Page ${isWide ? idx + 1 : idx + 2}">`
+    : `<div class="book-page-blank"></div>`;
 
   pageWrap.innerHTML = `
     <div class="book-reader-wrap" id="bookReaderWrap" ${wrapZoomStyle}>
       <div class="book-spread" id="bookSpread">
-        <div class="book-side book-left" id="bookLeft">
-          ${leftImg
-            ? `<img class="book-page-img" src="${escapeHtml(leftImg)}" alt="Page ${idx + 2}">`
-            : `<div class="book-page-blank"></div>`}
-        </div>
+        <div class="book-side book-left" id="bookLeft">${leftHtml}</div>
         <div class="book-spine"></div>
-        <div class="book-side book-right" id="bookRight">
-          ${rightImg
-            ? `<img class="book-page-img" src="${escapeHtml(rightImg)}" alt="Page ${idx + 1}">`
-            : `<div class="book-page-blank"></div>`}
-        </div>
+        <div class="book-side book-right" id="bookRight">${rightHtml}</div>
       </div>
     </div>
   `;
@@ -2795,6 +2870,8 @@ function renderBookSpread() {
   updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, idx);
   attachBookDragEvents();
   preloadBookPages(idx, pages);
+  _applyBookZoom();
+  _applyWideSplitIfNeeded(idx, pages);
 }
 
 function attachBookDragEvents() {
@@ -2834,11 +2911,14 @@ function navigateBook(direction) {
   let newIdx;
 
   if (direction === "forward") {
-    if (idx + 2 >= total) { goToNextChapter(); return; }
-    newIdx = idx + 2;
+    const step = pages[idx]?.isWide ? 1 : 2;
+    if (idx + step >= total) { goToNextChapter(); return; }
+    newIdx = idx + step;
   } else {
     if (idx === 0) { goToPrevChapter(); return; }
-    newIdx = Math.max(0, idx - 2);
+    // Step back by 1 if the preceding page is a wide page, else by 2
+    const backStep = pages[idx - 1]?.isWide ? 1 : 2;
+    newIdx = Math.max(0, idx - backStep);
   }
 
   _bookFlipAnimating = true;
@@ -2846,22 +2926,29 @@ function navigateBook(direction) {
     state.currentPageIndex = newIdx;
     _bookFlipAnimating = false;
     // Update counter + nav buttons in-place — no DOM rebuild, no flash
-    const total2 = pages.length;
+    const total2   = pages.length;
+    const isWide2  = pages[newIdx]?.isWide;
+    const step2    = isWide2 ? 1 : 2;
     const r = newIdx + 1, l = newIdx + 2;
     const ctr = $("pageCounter");
-    if (ctr) ctr.textContent = l <= total2 ? `${r}-${l} / ${total2}` : `${r} / ${total2}`;
+    if (ctr) ctr.textContent = isWide2 ? `${r} / ${total2}` : (l <= total2 ? `${r}-${l} / ${total2}` : `${r} / ${total2}`);
     const pv2 = $("prevPage"), nx2 = $("nextPage");
     if (pv2) pv2.disabled = newIdx === 0;
-    if (nx2) nx2.disabled = newIdx + 2 >= total2;
+    if (nx2) nx2.disabled = newIdx + step2 >= total2;
     updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, newIdx);
     preloadBookPages(newIdx, pages);
     attachBookDragEvents();
+    _applyWideSplitIfNeeded(newIdx, pages);
   });
 }
 
 function playBookFlip(direction, oldIdx, newIdx, pages, onComplete, getSpread = getBookSpread) {
   const spread = $("bookSpread");
   if (!spread) { onComplete(); return; }
+
+  // Remove any wide-page overlay from the previous spread immediately
+  const prevOverlay = document.getElementById('bookWideOverlay');
+  if (prevOverlay) prevOverlay.remove();
 
   const { right: newRight, left: newLeft } = getSpread(newIdx, pages);
   const isForward = direction === "forward";
@@ -2870,8 +2957,14 @@ function playBookFlip(direction, oldIdx, newIdx, pages, onComplete, getSpread = 
   const sR = document.getElementById("bookRight");
 
   // ── Helper ─────────────────────────────────────────────────────────────────
-  const mkImg = (src) =>
-    src ? `<img class="book-page-img" src="${escapeHtml(src)}">` : `<div class="book-page-blank"></div>`;
+  const mkImg = (src, extraClass = '') =>
+    src ? `<img class="book-page-img${extraClass ? ' ' + extraClass : ''}" src="${escapeHtml(src)}">` : `<div class="book-page-blank"></div>`;
+
+  const newSpread = getSpread(newIdx, pages);
+  const newIsWide = newSpread.isWide;
+  // Recompute newRight/newLeft from the spread (already done above for the non-wide case)
+  const nRight = newSpread.right;
+  const nLeft  = newSpread.left;
 
   // Clone the existing rendered <img> from the panel that is about to flip.
   // Cloning guarantees the image is already loaded — no fetch needed, no blank frame.
@@ -2926,14 +3019,15 @@ function playBookFlip(direction, oldIdx, newIdx, pages, onComplete, getSpread = 
   front.appendChild(curlShadow);
 
   // ── Back face: the new incoming page (shown as the page lands) ──────────────
-  // Forward: the flipper sweeps right→left, so back face lands on the LEFT → show newLeft
-  // Backward: flipper sweeps left→right, back face lands on the RIGHT → show newRight
-  const backSrc = isForward ? newLeft : newRight;
+  // Forward: flipper sweeps right→left, back face lands on LEFT → show nLeft
+  // Backward: flipper sweeps left→right, back face lands on RIGHT → show nRight
+  const backSrc   = isForward ? nLeft  : nRight;
+  const backClass = isForward ? (newIsWide ? 'wide-split-left' : '') : (newIsWide ? 'wide-split-right' : '');
   const back = document.createElement("div");
   back.className = "book-flipper-face book-flipper-back";
   if (backSrc) {
     const bi = new Image();
-    bi.className = "book-page-img";
+    bi.className = `book-page-img${backClass ? ' ' + backClass : ''}`;
     bi.src = backSrc;
     back.appendChild(bi);
   } else {
@@ -2997,9 +3091,9 @@ function playBookFlip(direction, oldIdx, newIdx, pages, onComplete, getSpread = 
     if (!midUpdated && raw >= 0.48) {
       midUpdated = true;
       if (isForward) {
-        if (sL) sL.innerHTML = mkImg(newLeft);
+        if (sL) sL.innerHTML = mkImg(nLeft,  newIsWide ? 'wide-split-left'  : '');
       } else {
-        if (sR) sR.innerHTML = mkImg(newRight);
+        if (sR) sR.innerHTML = mkImg(nRight, newIsWide ? 'wide-split-right' : '');
       }
     }
 
@@ -3021,10 +3115,10 @@ function playBookFlip(direction, oldIdx, newIdx, pages, onComplete, getSpread = 
     done = true;
     flipper.remove();
     castShadow.remove();
-    // Ensure both panels are showing correct new content before handing back
+    // Ensure both panels show correct content before handing back
     if (!midUpdated) {
-      if (isForward) { if (sL) sL.innerHTML = mkImg(newLeft); }
-      else           { if (sR) sR.innerHTML = mkImg(newRight); }
+      if (isForward) { if (sL) sL.innerHTML = mkImg(nLeft,  newIsWide ? 'wide-split-left'  : ''); }
+      else           { if (sR) sR.innerHTML = mkImg(nRight, newIsWide ? 'wide-split-right' : ''); }
     }
     onComplete();
   }
@@ -3058,42 +3152,41 @@ function renderLTRSpread() {
   const pageWrap = $("pageWrap");
   if (!pageWrap) return;
 
-  if (state.currentPageIndex % 2 !== 0)
-    state.currentPageIndex = Math.max(0, state.currentPageIndex - 1);
-
   const idx   = state.currentPageIndex;
   const total = pages.length;
-  const { left: leftImg, right: rightImg } = getLTRSpread(idx, pages);
+
+  const spread = getLTRSpread(idx, pages);
+  const { left: leftImg, right: rightImg, isWide } = spread;
 
   const zoom = state.zoomLevel ?? 1.0;
-  pageWrap.className = "reader-content reading-mode-ltr";
-  pageWrap.style.overflow = zoom > 1.0 ? "auto" : "";
+  pageWrap.className = 'reader-content reading-mode-ltr' + _sharpClass();
+  pageWrap.style.overflow = '';
 
+  const step = isWide ? 1 : 2;
   const pv = $("prevPage"), nx = $("nextPage");
   if (pv) { pv.style.display = "block"; pv.disabled = idx === 0; }
-  if (nx) { nx.style.display = "block"; nx.disabled = idx + 2 >= total; }
+  if (nx) { nx.style.display = "block"; nx.disabled = idx + step >= total; }
 
   const l = idx + 1, r = idx + 2;
-  $("pageCounter").textContent = r <= total ? `${l}-${r} / ${total}` : `${l} / ${total}`;
+  $("pageCounter").textContent = isWide
+    ? `${l} / ${total}`
+    : (r <= total ? `${l}-${r} / ${total}` : `${l} / ${total}`);
 
-  const wrapZoomStyle = zoom !== 1.0
-    ? `style="transform:scale(${zoom});transform-origin:top center;"`
-    : "";
+  const wrapZoomStyle = '';
+
+  const leftHtml = leftImg
+    ? `<img class="book-page-img${isWide ? ' wide-split-left' : ''}" src="${escapeHtml(leftImg)}" alt="Page ${idx + 1}">`
+    : `<div class="book-page-blank"></div>`;
+  const rightHtml = rightImg
+    ? `<img class="book-page-img${isWide ? ' wide-split-right' : ''}" src="${escapeHtml(rightImg)}" alt="Page ${isWide ? idx + 1 : idx + 2}">`
+    : `<div class="book-page-blank"></div>`;
 
   pageWrap.innerHTML = `
     <div class="book-reader-wrap" id="bookReaderWrap" ${wrapZoomStyle}>
       <div class="book-spread" id="bookSpread">
-        <div class="book-side book-left" id="bookLeft">
-          ${leftImg
-            ? `<img class="book-page-img" src="${escapeHtml(leftImg)}" alt="Page ${idx + 1}">`
-            : `<div class="book-page-blank"></div>`}
-        </div>
+        <div class="book-side book-left" id="bookLeft">${leftHtml}</div>
         <div class="book-spine"></div>
-        <div class="book-side book-right" id="bookRight">
-          ${rightImg
-            ? `<img class="book-page-img" src="${escapeHtml(rightImg)}" alt="Page ${idx + 2}">`
-            : `<div class="book-page-blank"></div>`}
-        </div>
+        <div class="book-side book-right" id="bookRight">${rightHtml}</div>
       </div>
     </div>
   `;
@@ -3101,6 +3194,8 @@ function renderLTRSpread() {
   updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, idx);
   attachBookDragEvents();
   preloadBookPages(idx, pages);
+  _applyBookZoom();
+  _applyWideSplitIfNeeded(idx, pages);
 }
 
 function navigateLTR(direction) {
@@ -3112,27 +3207,32 @@ function navigateLTR(direction) {
   let newIdx;
 
   if (direction === "forward") {
-    if (idx + 2 >= total) { goToNextChapter(); return; }
-    newIdx = idx + 2;
+    const step = pages[idx]?.isWide ? 1 : 2;
+    if (idx + step >= total) { goToNextChapter(); return; }
+    newIdx = idx + step;
   } else {
     if (idx === 0) { goToPrevChapter(); return; }
-    newIdx = Math.max(0, idx - 2);
+    const backStep = pages[idx - 1]?.isWide ? 1 : 2;
+    newIdx = Math.max(0, idx - backStep);
   }
 
   _ltrFlipAnimating = true;
   playBookFlip(direction, idx, newIdx, pages, () => {
     state.currentPageIndex = newIdx;
     _ltrFlipAnimating = false;
-    const total2 = pages.length;
+    const total2   = pages.length;
+    const isWide2  = pages[newIdx]?.isWide;
+    const step2    = isWide2 ? 1 : 2;
     const l = newIdx + 1, r = newIdx + 2;
     const ctr = $("pageCounter");
-    if (ctr) ctr.textContent = r <= total2 ? `${l}-${r} / ${total2}` : `${l} / ${total2}`;
+    if (ctr) ctr.textContent = isWide2 ? `${l} / ${total2}` : (r <= total2 ? `${l}-${r} / ${total2}` : `${l} / ${total2}`);
     const pv2 = $("prevPage"), nx2 = $("nextPage");
     if (pv2) pv2.disabled = newIdx === 0;
-    if (nx2) nx2.disabled = newIdx + 2 >= total2;
+    if (nx2) nx2.disabled = newIdx + step2 >= total2;
     updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, newIdx);
     preloadBookPages(newIdx, pages);
     attachBookDragEvents();
+    _applyWideSplitIfNeeded(newIdx, pages);
   }, getLTRSpread);
 }
 
@@ -3140,20 +3240,28 @@ function applyZoom(delta) {
   state.zoomLevel = Math.min(3.0, Math.max(0.5, Math.round((state.zoomLevel + delta) * 10) / 10));
   updateZoomUI();
 
-  // In book (RTL or LTR) mode: update zoom live without rebuilding the DOM
   if (state.settings.readingMode === "rtl" || state.settings.readingMode === "ltr") {
-    const wrap = document.getElementById("bookReaderWrap");
-    const pageWrap = $("pageWrap");
-    const zoom = state.zoomLevel;
-    if (wrap) {
-      wrap.style.transform = zoom !== 1.0 ? `scale(${zoom})` : "";
-      wrap.style.transformOrigin = "top center";
-    }
-    if (pageWrap) pageWrap.style.overflow = zoom > 1.0 ? "auto" : "";
+    _applyBookZoom();
     return;
   }
 
   renderPage();
+}
+
+// Apply zoom transform to bookSpread only (overflow:hidden on container = no scrollbars)
+function _applyBookZoom() {
+  const spread = document.getElementById('bookSpread');
+  const zoom = state.zoomLevel ?? 1.0;
+  if (spread) {
+    spread.style.transform = zoom !== 1.0 ? `scale(${zoom})` : '';
+    spread.style.transformOrigin = 'center center';
+  }
+}
+
+// Returns the CSS class suffix for the current sharpness level
+function _sharpClass() {
+  const s = state.settings.lineSharpness || 0;
+  return s > 0 ? ` sharp-${s}` : '';
 }
 
 // ============================================================================
@@ -3301,6 +3409,16 @@ function showSettings() {
         <div class="settings-divider"></div>
         <h3 class="settings-subsection">Advanced Settings</h3>
         <div class="setting-group">
+          <label>Line Sharpness</label>
+          <select id="sharpnessSelect" class="input">
+            <option value="0" ${(state.settings.lineSharpness||0) === 0 ? 'selected' : ''}>Off</option>
+            <option value="1" ${(state.settings.lineSharpness||0) === 1 ? 'selected' : ''}>Subtle</option>
+            <option value="2" ${(state.settings.lineSharpness||0) === 2 ? 'selected' : ''}>Strong</option>
+            <option value="3" ${(state.settings.lineSharpness||0) === 3 ? 'selected' : ''}>Max</option>
+          </select>
+          <p class="setting-description">Increases contrast to make manga lines crisper</p>
+        </div>
+        <div class="setting-group">
           <label class="toggle-label">
             <span class="toggle-text">Hide read chapters</span>
             <input type="checkbox" id="skipReadToggle" ${state.settings.skipReadChapters ? "checked" : ""}>
@@ -3340,6 +3458,15 @@ function showSettings() {
     state.settings.readingMode = e.target.value;
     saveSettings();
     if (state.currentChapter) { showReader(); renderPage(); }
+  };
+  $("sharpnessSelect").onchange = (e) => {
+    state.settings.lineSharpness = parseInt(e.target.value, 10);
+    saveSettings();
+    const pw = $("pageWrap");
+    if (pw) {
+      pw.classList.remove('sharp-1', 'sharp-2', 'sharp-3');
+      if (state.settings.lineSharpness > 0) pw.classList.add(`sharp-${state.settings.lineSharpness}`);
+    }
   };
   $("skipReadToggle").onchange = (e) => {
     state.settings.skipReadChapters = e.target.checked;
@@ -3624,39 +3751,36 @@ async function advancedSearch(page = 1) {
   state.advSearchPage = page;
   $("advancedSearchStatus").textContent = "Searching...";
   try {
-    // Build tags array from selected filters
-    const tags = [...selectedGenres];
-    if (format) tags.push(format);
-
-    const result = await api(`/api/source/${state.currentSourceId}/search`, {
-      method: "POST",
-      body: JSON.stringify({
-        query: query || "",
-        page,
-        orderBy,
-        statuses: publicationStatus ? [publicationStatus] : [],
-        tags: tags
-      })
-    });
+    let result;
+    if (selectedGenres.length > 0) {
+      // Use byGenres endpoint so genres are resolved to real tag UUIDs on the backend
+      result = await api(`/api/source/${state.currentSourceId}/byGenres`, {
+        method: "POST",
+        body: JSON.stringify({ genres: selectedGenres, orderBy })
+      });
+    } else {
+      result = await api(`/api/source/${state.currentSourceId}/search`, {
+        method: "POST",
+        body: JSON.stringify({ query: query || "", page, orderBy })
+      });
+    }
 
     let results = result.results || [];
     const hasNextPage = result.hasNextPage || false;
     state.advSearchHasNextPage = hasNextPage;
 
     // Client-side filtering for additional criteria
+    if (query && selectedGenres.length > 0) {
+      const q = query.toLowerCase();
+      results = results.filter(m => (m.title || "").toLowerCase().includes(q));
+    }
+
     if (publicationStatus) {
       results = results.filter(m => m.status?.toLowerCase() === publicationStatus.toLowerCase());
     }
 
     if (contentRating) {
       results = results.filter(m => m.contentRating?.toLowerCase() === contentRating.toLowerCase());
-    }
-
-    if (selectedGenres.length > 0) {
-      results = results.filter(m => {
-        const mt = (m.genres || []).map(g => g.toLowerCase());
-        return selectedGenres.some(t => mt.some(g => g.includes(t.toLowerCase())));
-      });
     }
 
     const resultsDiv = $("advancedResults");
@@ -3676,21 +3800,47 @@ async function advancedSearch(page = 1) {
 }
 
 async function randomManga() {
-  if (!state.currentSourceId) { alert("Select a source first."); return; }
-  $("advancedSearchStatus").textContent = "Finding random manga...";
+  const sourceIds = Object.keys(state.installedSources).filter(id => id !== 'local');
+  const statusEl = $('advancedSearchStatus');
+
+  // Build a combined pool: library items (any source) + online search from a random source/page
+  let pool = [];
+
+  // Add library
+  for (const m of (state.favorites || [])) {
+    if (m.sourceId && m.sourceId !== 'local') pool.push({ id: m.id, sourceId: m.sourceId });
+  }
+
+  // Add online results from a random installed source on a random page
+  if (sourceIds.length > 0) {
+    const src = sourceIds[Math.floor(Math.random() * sourceIds.length)];
+    const pg  = Math.floor(Math.random() * 15) + 1;
+    if (statusEl) statusEl.textContent = 'Finding random manga...';
+    try {
+      const res = await api(`/api/source/${src}/search`, {
+        method: 'POST',
+        body: JSON.stringify({ query: '', page: pg })
+      });
+      for (const m of (res.results || [])) pool.push({ id: m.id, sourceId: src });
+    } catch (_) { /* use library only if network fails */ }
+  }
+
+  if (!pool.length) {
+    if (statusEl) statusEl.textContent = 'No manga found. Install a source or add manga to your library.';
+    return;
+  }
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const prevSource = state.currentSourceId;
+  state.currentSourceId = pick.sourceId;
+  state._fromRandom = true;
+  if (statusEl) statusEl.textContent = '';
   try {
-    const result = await api(`/api/source/${state.currentSourceId}/search`, {
-      method: "POST",
-      body: JSON.stringify({ query: "", page: 1, orderBy: "random" })
-    });
-    const results = result.results || [];
-    if (results.length > 0) {
-      await loadMangaDetails(results[Math.floor(Math.random() * results.length)].id);
-    } else {
-      $("advancedSearchStatus").textContent = "No manga found";
-    }
+    await loadMangaDetails(pick.id, 'random');
   } catch (e) {
-    $("advancedSearchStatus").textContent = `Error: ${e.message}`;
+    state.currentSourceId = prevSource;
+    state._fromRandom = false;
+    if (statusEl) statusEl.textContent = `Error: ${e.message}`;
   }
 }
 
@@ -3916,7 +4066,7 @@ function bindUI() {
   const advBtn   = $("advancedSearchBtn");
   const advInput = $("advancedSearchInput");
   const randBtn  = $("randomMangaBtn");
-  if (advBtn)   advBtn.onclick   = advancedSearch;
+  if (advBtn)   advBtn.onclick   = () => advancedSearch();
   if (advInput) advInput.onkeypress = (e) => { if (e.key === "Enter") advancedSearch(); };
   if (randBtn)  randBtn.onclick  = randomManga;
 

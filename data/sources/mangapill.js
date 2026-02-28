@@ -40,7 +40,15 @@ function parseSearchCards($) {
     const id    = href.replace('/manga/', '').split('?')[0];
     const raw   = img.attr('data-src') || img.attr('src') || '';
     const title = titleEl.text().trim() || $(el).find('a').last().text().trim();
-    results.push({ id, title, cover: normCover(raw), url: BASE + href, genres: [], status: 'unknown', author: '' });
+
+    // Genre links inside each card use href="/search?genre=..."
+    const genres = [];
+    $(el).find('a[href*="/search?genre"]').each((_, g) => {
+      const t = $(g).text().trim();
+      if (t) genres.push(t);
+    });
+
+    results.push({ id, title, cover: normCover(raw), url: BASE + href, genres, status: 'unknown', author: '' });
   });
   return results;
 }
@@ -74,6 +82,15 @@ async function getFromChaptersPage(limit = 20) {
 
 // ── Module export ─────────────────────────────────────────────────────────────
 
+// Client-side sort for MangaPill (no server-side sort support)
+function sortResults(results, orderBy) {
+  if (!orderBy || orderBy === 'relevance' || orderBy === 'followedCount') return results;
+  const r = [...results];
+  if (orderBy === 'title')  r.sort((a, b) => a.title.localeCompare(b.title));
+  if (orderBy === '-title') r.sort((a, b) => b.title.localeCompare(a.title));
+  return r;
+}
+
 module.exports = {
   meta: {
     id: 'mangapill',
@@ -82,23 +99,26 @@ module.exports = {
     author: 'scraper'
   },
 
-  async search(query, page = 1) {
+  async search(query, page = 1, orderBy = '') {
     const html = await getHtml(`${BASE}/search?q=${encodeURIComponent(query)}&page=${page}`);
     const $ = cheerio.load(html);
-    return { results: parseSearchCards($), hasNextPage: !!$('a.btn.btn-sm').length };
+    return { results: sortResults(parseSearchCards($), orderBy), hasNextPage: !!$('a.btn.btn-sm').length };
   },
 
   async trending()      { return { results: await getFromChaptersPage() }; },
   async recentlyAdded() { return { results: await getFromChaptersPage() }; },
   async latestUpdates() { return { results: await getFromChaptersPage() }; },
 
-  async byGenres(genres) {
+  async byGenres(genres, orderBy = '') {
     if (!genres?.length) return this.trending();
-    // MangaPill genre filter: /search?genre[]=action&genre[]=adventure
-    const params = genres.map(g => `genre[]=${encodeURIComponent(g.toLowerCase())}`).join('&');
+    // Normalize to MangaPill's exact casing
+    const caseMap = { 'sci-fi': 'Sci-Fi', 'one shot': 'One-Shot', 'shoujo ai': 'Shoujo Ai', 'shounen ai': 'Shounen Ai' };
+    const norm = g => caseMap[g.toLowerCase()] || g;
+    // MangaPill genre filter: /search?genre=Action&genre=Drama (original case, plain param)
+    const params = genres.map(g => `genre=${encodeURIComponent(norm(g))}`).join('&');
     const html = await getHtml(`${BASE}/search?${params}`);
     const $ = cheerio.load(html);
-    return { results: parseSearchCards($) };
+    return { results: sortResults(parseSearchCards($), orderBy) };
   },
 
   async authorSearch(authorName) {
