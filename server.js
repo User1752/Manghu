@@ -8,7 +8,10 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const multer = require('multer');
 const AdmZip  = require('adm-zip');
 
+const compression = require('compression');
+
 const app = express();
+app.use(compression()); // gzip all responses
 app.use(express.json({ limit: "5mb" }));
 
 const DATA_DIR   = path.join(__dirname, "data");
@@ -1070,7 +1073,13 @@ app.post("/api/mangaupdates/search", async (req, res) => {
 // ============================================================================
 // STATIC FILES
 // ============================================================================
-app.use("/", express.static(path.join(__dirname, "public")));
+// Long-term caching for all static assets (JS/CSS/images).
+// Browser will reuse cached files for 7 days without re-requesting.
+app.use("/", express.static(path.join(__dirname, "public"), {
+  maxAge: '7d',
+  etag: true,
+  lastModified: true
+}));
 
 ensureDirs()
   .then(() => initStore())

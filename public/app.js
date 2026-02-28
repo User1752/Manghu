@@ -885,7 +885,7 @@ function mangaCardHTML(m) {
     <div class="manga-card" data-manga-id="${escapeHtml(m.id)}"${sourceAttr}>
       <div class="manga-card-cover">
         ${m.cover && !m.cover.endsWith('.pdf')
-          ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy" referrerpolicy="no-referrer">`
+          ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
           : (m.cover ? '<div class="no-cover">&#128196;</div>' : '<div class="no-cover">?</div>')}
       </div>
       <div class="manga-card-info">
@@ -926,7 +926,7 @@ function renderHistoryView() {
     return `
       <div class="history-item" data-manga-id="${escapeHtml(m.id)}" data-source-id="${escapeHtml(m.sourceId || "")}">
         <div class="history-cover">
-          ${m.cover && !m.cover.endsWith('.pdf') ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy">` : (m.cover ? `<div class="no-cover">&#128196;</div>` : `<div class="no-cover">?</div>`)}
+          ${m.cover && !m.cover.endsWith('.pdf') ? `<img src="${escapeHtml(m.cover)}" alt="${escapeHtml(m.title)}" loading="lazy" decoding="async">` : (m.cover ? `<div class="no-cover">&#128196;</div>` : `<div class="no-cover">?</div>`)}
         </div>
         <div class="history-info">
           <h3 class="history-title">${escapeHtml(m.title)}</h3>
@@ -1209,7 +1209,7 @@ function renderLibrary() {
     return `
       <div class="library-card" data-manga-id="${escapeHtml(manga.id)}" data-source-id="${escapeHtml(manga.sourceId || state.currentSourceId)}">
         <div class="library-card-cover">
-          ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy">` : (manga.cover ? '<div class="no-cover">&#128196;</div>' : '<div class="no-cover">?</div>')}
+          ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy" decoding="async">` : (manga.cover ? '<div class="no-cover">&#128196;</div>' : '<div class="no-cover">?</div>')}
           ${statusBadge}
           <div class="library-card-overlay">
             <button class="btn-read">${btnLabel}</button>
@@ -1232,7 +1232,7 @@ function renderLibrary() {
         return `
         <div class="library-card local-manga-card" data-manga-id="${escapeHtml(manga.id)}" data-source-id="local">
           <div class="library-card-cover">
-            ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy">` : '<div class="no-cover">&#128196;</div>'}
+            ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy" decoding="async">` : '<div class="no-cover">&#128196;</div>'}
             <div class="local-badge">${escapeHtml((manga.type || 'local').toUpperCase())}</div>
             <button class="local-delete-btn" data-manga-id="${escapeHtml(manga.id)}" title="Delete local manga">&#128465;</button>
             <div class="library-card-overlay"><button class="btn-read">Read</button></div>
