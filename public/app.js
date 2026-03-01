@@ -803,17 +803,17 @@ function renderSourceSelect() {
       state.currentSourceId = installed[0].id;
     }
     sel.value = state.currentSourceId;
-    sel.dispatchEvent(new Event('change', { bubbles: false }));
     sel.onchange = () => { 
       state.currentSourceId = sel.value;
-      if (state.currentView === 'advanced-search') {
-        advancedSearch();
-      } else {
+      // Keep both selectors in sync
+      for (const other of selectors) { if (other && other !== sel) other.value = sel.value; }
+      if (state.currentView !== 'advanced-search') {
         // Reload homepage content when source changes
         loadPopularToday();
         loadRecentlyAdded();
         loadLatestUpdates();
       }
+      // In advanced-search: user changes source manually and clicks search themselves
     };
   }
 }
@@ -1314,13 +1314,16 @@ function renderLibrary() {
     ? `<div class="local-section-header">&#128193; Local Manga</div>` +
       state.localManga.map(manga => {
         const localRating = state.ratings[manga.id] || 0;
+        const localLastChapter = state.lastReadChapter?.[manga.id];
+        const localBtnLabel = localLastChapter ? 'Continue Reading' : 'Read';
         return `
         <div class="library-card local-manga-card" data-manga-id="${escapeHtml(manga.id)}" data-source-id="local">
           <div class="library-card-cover">
-            ${manga.cover && !manga.cover.endsWith('.pdf') ? `<img src="${escapeHtml(manga.cover)}" alt="${escapeHtml(manga.title)}" loading="lazy" decoding="async">` : '<div class="no-cover">&#128196;</div>'}
+            <img src="/api/local/${escapeHtml(manga.id)}/thumb" alt="${escapeHtml(manga.title)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="no-cover" style="display:none">&#128196;</div>
             <div class="local-badge">${escapeHtml((manga.type || 'local').toUpperCase())}</div>
             <button class="local-delete-btn" data-manga-id="${escapeHtml(manga.id)}" title="Delete local manga">&#128465;</button>
-            <div class="library-card-overlay"><button class="btn-read">Read</button></div>
+            <div class="library-card-overlay"><button class="btn-read">${localBtnLabel}</button></div>
           </div>
           <div class="library-card-info">
             <h3 class="library-card-title">${escapeHtml(manga.title)}</h3>
@@ -1392,6 +1395,36 @@ function renderLibrary() {
     card.onclick = async (e) => {
       if (e.target.closest(".local-delete-btn")) return;
       state.currentSourceId = "local";
+
+      // "Continue Reading" — jump directly to last chapter + page
+      if (e.target.closest(".btn-read") && state.lastReadChapter?.[mangaId]) {
+        const lastChapterId = state.lastReadChapter[mangaId];
+        const lastPageIndex = state.lastReadPages?.[`${mangaId}:${lastChapterId}`] || 0;
+        try {
+          showToast("Resuming...", "", "info");
+          const result = await api(`/api/source/local/mangaDetails`, {
+            method: "POST",
+            body: JSON.stringify({ mangaId })
+          });
+          state.currentManga = result;
+          const cr = await api(`/api/source/local/chapters`, {
+            method: "POST",
+            body: JSON.stringify({ mangaId })
+          });
+          state.allChapters = cr.chapters || [];
+          const idx = state.allChapters.findIndex(c => c.id === lastChapterId);
+          if (idx >= 0) {
+            const ch = state.allChapters[idx];
+            await loadChapter(lastChapterId, ch.name || `Chapter ${ch.chapter || idx + 1}`, idx, lastPageIndex);
+          } else {
+            await loadMangaDetails(mangaId, "library");
+          }
+        } catch (err) {
+          showToast("Error", err.message, "error");
+        }
+        return;
+      }
+
       await loadMangaDetails(mangaId, "library");
     };
   });
@@ -1566,6 +1599,16 @@ async function submitImport() {
 }
 
 async function generateMissingPDFCovers() {
+  // Wait up to 10 s for PDF.js to load from CDN
+  if (!window.pdfjsLib) {
+    await new Promise(resolve => {
+      let waited = 0;
+      const iv = setInterval(() => {
+        waited += 250;
+        if (window.pdfjsLib || waited >= 10000) { clearInterval(iv); resolve(); }
+      }, 250);
+    });
+  }
   if (!window.pdfjsLib) return;
   const pending = state.localManga.filter(m => m.cover && m.cover.endsWith('.pdf'));
   for (const manga of pending) {
@@ -2828,11 +2871,11 @@ function renderPage() {
 
   // PDF mode: delegate to async PDF.js renderer (respects reading mode)
   if (state.currentChapter.isPDF && state.pdfDocument) {
-    if (state.settings.readingMode === 'webtoon') {
-      renderPDFWebtoon();
-    } else {
-      renderPDFPageToCanvas(state.currentPageIndex + 1);
-    }
+    const _mode = state.settings.readingMode;
+    if (_mode === 'webtoon')    renderPDFWebtoon();
+    else if (_mode === 'rtl')   renderPDFSpread(true);
+    else if (_mode === 'ltr')   renderPDFSpread(false);
+    else                        renderPDFPageToCanvas(state.currentPageIndex + 1);
     return;
   }
 
@@ -2998,6 +3041,8 @@ function _applyWideSplitIfNeeded(idx, pages) {
 
 function renderBookSpread() {
   if (!state.currentChapter?.pages) return;
+  // PDF: use canvas-based spread
+  if (state.currentChapter.isPDF && state.pdfDocument) { renderPDFSpread(true); return; }
   const pages    = state.currentChapter.pages;
   const pageWrap = $("pageWrap");
   if (!pageWrap) return;
@@ -3089,6 +3134,34 @@ function navigateBook(direction) {
   const idx   = state.currentPageIndex;
   const total = pages.length;
   let newIdx;
+
+  // PDF: use canvas-capture flip animation
+  if (state.currentChapter?.isPDF && state.pdfDocument) {
+    if (_bookFlipAnimating) return;
+    if (direction === 'forward') {
+      if (idx + 2 >= total) { goToNextChapter(); return; }
+      newIdx = idx + 2;
+    } else {
+      if (idx === 0) { goToPrevChapter(); return; }
+      newIdx = Math.max(0, idx - 2);
+    }
+    _bookFlipAnimating = true;
+    playPDFFlip(true, direction, idx, newIdx, () => {
+      state.currentPageIndex = newIdx;
+      _bookFlipAnimating = false;
+      renderPDFSpread(true, true); // noFade: flip was already the animation
+      const pNum1 = newIdx + 1, pNum2 = newIdx + 2;
+      const ctr = $("pageCounter");
+      if (ctr) ctr.textContent = pNum2 <= total ? `${pNum1}-${pNum2} / ${total}` : `${pNum1} / ${total}`;
+      const pv2 = $("prevPage"), nx2 = $("nextPage");
+      const hasNextCh2 = getNextChapterIndex(state.currentChapterIndex) >= 0 && getNextChapterIndex(state.currentChapterIndex) < (state.allChapters?.length || 0);
+      const hasPrevCh2 = getPrevChapterIndex(state.currentChapterIndex) < (state.allChapters?.length || 0);
+      if (pv2) pv2.disabled = newIdx === 0 && !hasPrevCh2;
+      if (nx2) nx2.disabled = newIdx + 2 >= total && !hasNextCh2;
+      attachBookDragEvents();
+    });
+    return;
+  }
 
   if (direction === "forward") {
     const step = pages[idx]?.isWide ? 1 : 2;
@@ -3313,6 +3386,163 @@ function playBookFlip(direction, oldIdx, newIdx, pages, onComplete, getSpread = 
   setTimeout(finish, DURATION + 300); // safety fallback
 }
 
+// ============================================================================
+// PDF page-flip animation — same 3-D flip engine, but sources come from
+// PDF.js canvas captures / offscreen renders instead of <img src=...>
+// ============================================================================
+async function playPDFFlip(isRTL, direction, oldIdx, newIdx, onComplete) {
+  const pdf = state.pdfDocument;
+  const spread = document.getElementById('bookSpread');
+  if (!spread || !pdf) { onComplete(); return; }
+
+  // In RTL (manga) mode the animation direction is inverted relative to
+  // the navigation direction (same inversion as in navigateBook → playBookFlip).
+  const isAnimForward = isRTL ? direction !== 'forward' : direction === 'forward';
+
+  const sL = document.getElementById('bookLeft');
+  const sR = document.getElementById('bookRight');
+
+  // ── Capture an existing panel canvas as a dataURL ──────────────────────────
+  async function capturePanel(panel) {
+    const canvas = panel?.querySelector('canvas');
+    if (!canvas) return null;
+    try { return canvas.toDataURL(); } catch (e) { return null; }
+  }
+
+  // ── Render one PDF page to an offscreen canvas and return its dataURL ───────
+  async function pdfPageToDataURL(pageNum) {
+    if (pageNum < 1 || pageNum > pdf.numPages) return null;
+    try {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const c = document.createElement('canvas');
+      c.width = viewport.width; c.height = viewport.height;
+      await page.render({ canvasContext: c.getContext('2d'), viewport }).promise;
+      return c.toDataURL();
+    } catch (e) { return null; }
+  }
+
+  // Back-face page number (the new page revealed as the flipper lands).
+  // Formula derived from spread layout:
+  //   RTL: right=pages[idx], left=pages[idx+1]  → 1-based: right=idx+1, left=idx+2
+  //   LTR: left=pages[idx], right=pages[idx+1]  → 1-based: left=idx+1, right=idx+2
+  // isAnimForward=true  → flipper sweeps from right panel, back lands on LEFT
+  //   RTL backward : new left = newIdx+2
+  //   LTR forward  : new left = newIdx+1
+  // isAnimForward=false → flipper sweeps from left panel, back lands on RIGHT
+  //   RTL forward  : new right = newIdx+1
+  //   LTR backward : new right = newIdx+2
+  const backPageNum = (isAnimForward === isRTL) ? newIdx + 2 : newIdx + 1;
+
+  // Gather dataURLs in parallel
+  const flipPanel = isAnimForward ? sR : sL;
+  const [frontDataURL, backDataURL] = await Promise.all([
+    capturePanel(flipPanel),
+    pdfPageToDataURL(backPageNum),
+  ]);
+
+  const mkImgEl = (dataURL) => {
+    if (!dataURL) { const d = document.createElement('div'); d.className = 'book-page-blank'; return d; }
+    const img = new Image(); img.src = dataURL; img.className = 'book-page-img'; return img;
+  };
+
+  // Pre-fill the panel under the flipper with the back-face content so it is
+  // ready the instant the flipper is removed.
+  if (isAnimForward) {
+    if (sR) { sR.innerHTML = ''; sR.appendChild(mkImgEl(backDataURL)); }
+  } else {
+    if (sL) { sL.innerHTML = ''; sL.appendChild(mkImgEl(backDataURL)); }
+  }
+
+  const w = spread.offsetWidth / 2;
+  const h = spread.offsetHeight;
+
+  // ── Flipper element ─────────────────────────────────────────────────────────
+  const flipper = document.createElement('div');
+  Object.assign(flipper.style, {
+    position: 'absolute', top: '0', width: w + 'px', height: h + 'px',
+    transformStyle: 'preserve-3d', zIndex: '20',
+    left: isAnimForward ? w + 'px' : '0px',
+    transformOrigin: isAnimForward ? 'left center' : 'right center',
+    willChange: 'transform',
+  });
+
+  // Front face — currently visible panel (captured as dataURL → always loaded)
+  const front = document.createElement('div');
+  front.className = 'book-flipper-face book-flipper-front';
+  if (frontDataURL) front.appendChild(mkImgEl(frontDataURL));
+  else front.innerHTML = '<div class="book-page-blank"></div>';
+
+  const curlShadow = document.createElement('div');
+  curlShadow.style.cssText = [
+    'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:3;opacity:0;',
+    isAnimForward
+      ? 'background:linear-gradient(to right,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.25) 30%,transparent 65%);'
+      : 'background:linear-gradient(to left,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.25) 30%,transparent 65%);',
+  ].join('');
+  front.appendChild(curlShadow);
+
+  // Back face — incoming page
+  const back = document.createElement('div');
+  back.className = 'book-flipper-face book-flipper-back';
+  back.appendChild(mkImgEl(backDataURL));
+
+  const backShadow = document.createElement('div');
+  backShadow.style.cssText = [
+    'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:3;opacity:0;',
+    isAnimForward
+      ? 'background:linear-gradient(to left,rgba(0,0,0,0.6) 0%,rgba(0,0,0,0.15) 35%,transparent 65%);'
+      : 'background:linear-gradient(to right,rgba(0,0,0,0.6) 0%,rgba(0,0,0,0.15) 35%,transparent 65%);',
+  ].join('');
+  back.appendChild(backShadow);
+
+  flipper.appendChild(front);
+  flipper.appendChild(back);
+
+  // Cast shadow on the stationary side
+  const castShadow = document.createElement('div');
+  Object.assign(castShadow.style, {
+    position: 'absolute', top: '0', width: w + 'px', height: h + 'px',
+    left: isAnimForward ? '0px' : w + 'px',
+    zIndex: '19', pointerEvents: 'none', opacity: '0',
+    background: isAnimForward
+      ? 'linear-gradient(to left,rgba(0,0,0,0.55) 0%,transparent 65%)'
+      : 'linear-gradient(to right,rgba(0,0,0,0.55) 0%,transparent 65%)',
+  });
+  spread.appendChild(castShadow);
+  spread.appendChild(flipper);
+
+  // ── RAF animation loop ──────────────────────────────────────────────────────
+  const DURATION = 520;
+  let startTime = null, done = false;
+
+  function ease(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+
+  function frame(ts) {
+    if (done) return;
+    if (!startTime) startTime = ts;
+    const raw = Math.min((ts - startTime) / DURATION, 1);
+    const et  = ease(raw);
+    flipper.style.transform = `rotateY(${isAnimForward ? -180 * et : 180 * et}deg)`;
+    const peak = Math.sin(et * Math.PI);
+    curlShadow.style.opacity = (peak * 0.90).toFixed(3);
+    backShadow.style.opacity = (peak * 0.82).toFixed(3);
+    castShadow.style.opacity = (peak * 0.68).toFixed(3);
+    if (raw < 1) requestAnimationFrame(frame); else finish();
+  }
+
+  function finish() {
+    if (done) return;
+    done = true;
+    flipper.remove();
+    castShadow.remove();
+    onComplete();
+  }
+
+  requestAnimationFrame(frame);
+  setTimeout(finish, DURATION + 300); // safety fallback
+}
+
 // Pre-fetch images for the next 3 spreads (6 pages) and 1 previous spread
 function preloadBookPages(idx, pages) {
   const srcs = new Set();
@@ -3334,6 +3564,8 @@ let _ltrFlipAnimating = false;
 
 function renderLTRSpread() {
   if (!state.currentChapter?.pages) return;
+  // PDF: use canvas-based spread
+  if (state.currentChapter.isPDF && state.pdfDocument) { renderPDFSpread(false); return; }
   const pages    = state.currentChapter.pages;
   const pageWrap = $("pageWrap");
   if (!pageWrap) return;
@@ -3393,6 +3625,34 @@ function navigateLTR(direction) {
   const total = pages.length;
   let newIdx;
 
+  // PDF: use canvas-capture flip animation
+  if (state.currentChapter?.isPDF && state.pdfDocument) {
+    if (_ltrFlipAnimating) return;
+    if (direction === 'forward') {
+      if (idx + 2 >= total) { goToNextChapter(); return; }
+      newIdx = idx + 2;
+    } else {
+      if (idx === 0) { goToPrevChapter(); return; }
+      newIdx = Math.max(0, idx - 2);
+    }
+    _ltrFlipAnimating = true;
+    playPDFFlip(false, direction, idx, newIdx, () => {
+      state.currentPageIndex = newIdx;
+      _ltrFlipAnimating = false;
+      renderPDFSpread(false, true); // noFade: flip was already the animation
+      const pNum1 = newIdx + 1, pNum2 = newIdx + 2;
+      const ctr = $("pageCounter");
+      if (ctr) ctr.textContent = pNum2 <= total ? `${pNum1}-${pNum2} / ${total}` : `${pNum1} / ${total}`;
+      const pv2 = $("prevPage"), nx2 = $("nextPage");
+      const hasNextCh2 = getNextChapterIndex(state.currentChapterIndex) >= 0 && getNextChapterIndex(state.currentChapterIndex) < (state.allChapters?.length || 0);
+      const hasPrevCh2 = getPrevChapterIndex(state.currentChapterIndex) < (state.allChapters?.length || 0);
+      if (pv2) pv2.disabled = newIdx === 0 && !hasPrevCh2;
+      if (nx2) nx2.disabled = newIdx + 2 >= total && !hasNextCh2;
+      attachBookDragEvents();
+    });
+    return;
+  }
+
   if (direction === "forward") {
     const step = pages[idx]?.isWide ? 1 : 2;
     if (idx + step >= total) { _ltrFlipAnimating = false; goToNextChapter(); return; }
@@ -3431,12 +3691,61 @@ function applyZoom(delta) {
   state.zoomLevel = Math.min(3.0, Math.max(0.5, Math.round((state.zoomLevel + delta) * 10) / 10));
   updateZoomUI();
 
-  if (state.settings.readingMode === "rtl" || state.settings.readingMode === "ltr") {
+  const mode = state.settings.readingMode;
+  if (mode === 'rtl' || mode === 'ltr') {
     _applyBookZoom();
     return;
   }
+  if (mode === 'webtoon') {
+    _applyWebtoonZoom();
+    return;
+  }
+  // Single-page mode: just scale the existing wrap in-place
+  _applySinglePageZoom();
+}
 
-  renderPage();
+// Update zoom on the webtoon wrap in-place (preserves scroll position & loaded images)
+function _applyWebtoonZoom() {
+  const wrap = document.querySelector('#pageWrap .page-zoom-wrap');
+  if (!wrap) { renderPage(); return; }
+  const pageWrap = $('pageWrap');
+  const zoom = state.zoomLevel ?? 1.0;
+
+  // Find the first page element that is visible (or nearest to viewport top)
+  // We'll use it as a stable anchor so the user stays on the same page after zoom.
+  const pages = Array.from(wrap.querySelectorAll('.webtoon-page, canvas'));
+  let anchor = null, anchorRectBefore = null;
+  if (pageWrap && pages.length) {
+    const vpTop = pageWrap.getBoundingClientRect().top;
+    for (const el of pages) {
+      const r = el.getBoundingClientRect();
+      // Pick the first element whose bottom is below the viewport top (i.e. at least partially visible)
+      if (r.bottom > vpTop) { anchor = el; anchorRectBefore = r; break; }
+    }
+    if (!anchor) { anchor = pages[0]; anchorRectBefore = anchor.getBoundingClientRect(); }
+  }
+
+  wrap.style.transform = zoom !== 1.0 ? `scale(${zoom})` : '';
+  wrap.style.transformOrigin = 'top center';
+
+  // After the browser paints the new transform, shift scroll so the anchor
+  // element returns to exactly where it was relative to the viewport.
+  if (anchor && anchorRectBefore && pageWrap) {
+    requestAnimationFrame(() => {
+      const anchorRectAfter = anchor.getBoundingClientRect();
+      const delta = anchorRectAfter.top - anchorRectBefore.top;
+      pageWrap.scrollTop += delta;
+    });
+  }
+}
+
+// Update zoom on a single-page wrap in-place
+function _applySinglePageZoom() {
+  const wrap = document.querySelector('#pageWrap .page-zoom-wrap');
+  if (!wrap) { renderPage(); return; }
+  const zoom = state.zoomLevel ?? 1.0;
+  wrap.style.transform = zoom !== 1.0 ? `scale(${zoom})` : '';
+  wrap.style.transformOrigin = 'top center';
 }
 
 // Apply zoom transform to bookSpread only (overflow:hidden on container = no scrollbars)
@@ -3549,7 +3858,7 @@ async function renderPDFPageToCanvas(pageNum) {
           : `<p class="chapter-end-label">Last chapter reached!</p>`}
       </div>` : '';
 
-    pageWrap.className = 'reader-content';
+    pageWrap.className = 'reader-content' + _sharpClass();
     pageWrap.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'page-zoom-wrap';
@@ -3573,6 +3882,98 @@ async function renderPDFPageToCanvas(pageNum) {
 function updateZoomUI() {
   const el = $("zoomLevel");
   if (el) el.textContent = `${Math.round(state.zoomLevel * 100)}%`;
+}
+
+// PDF book-spread renderer for RTL (manga) and LTR modes.
+// noFade=true when called right after the flip animation (flip itself is the transition)
+async function renderPDFSpread(isRTL, noFade = false) {
+  const pageWrap = $('pageWrap');
+  if (!state.pdfDocument || !pageWrap) return;
+  const pdf   = state.pdfDocument;
+  const total = pdf.numPages;
+  const idx   = state.currentPageIndex;
+  const pNum1 = idx + 1;
+  const pNum2 = idx + 2;
+
+  const pv = $('prevPage'), nx = $('nextPage');
+  const hasNextCh = getNextChapterIndex(state.currentChapterIndex) >= 0
+    && getNextChapterIndex(state.currentChapterIndex) < (state.allChapters?.length || 0);
+  const hasPrevCh = getPrevChapterIndex(state.currentChapterIndex) < (state.allChapters?.length || 0);
+  if (pv) { pv.style.display = 'block'; pv.disabled = idx === 0 && !hasPrevCh; }
+  if (nx) { nx.style.display = 'block'; nx.disabled = pNum1 >= total && !hasNextCh; }
+  $('pageCounter').textContent = pNum2 <= total
+    ? `${pNum1}-${pNum2} / ${total}`
+    : `${pNum1} / ${total}`;
+
+  pageWrap.className = `reader-content ${isRTL ? 'reading-mode-rtl' : 'reading-mode-ltr'}` + _sharpClass();
+  pageWrap.style.overflow = '';
+  pageWrap.innerHTML = `
+    <div class="book-reader-wrap" id="bookReaderWrap">
+      <div class="book-spread" id="bookSpread">
+        <div class="book-side book-left"  id="bookLeft"></div>
+        <div class="book-spine"></div>
+        <div class="book-side book-right" id="bookRight"></div>
+      </div>
+    </div>`;
+
+  if (pNum1 >= total) {
+    const nextIdx   = getNextChapterIndex(state.currentChapterIndex);
+    const nextCh    = (nextIdx >= 0 && nextIdx < (state.allChapters?.length || 0)) ? state.allChapters[nextIdx] : null;
+    const nextLabel = nextCh ? (nextCh.name || `Chapter ${nextCh.chapter || nextIdx + 1}`) : null;
+    pageWrap.insertAdjacentHTML('beforeend', `
+      <div class="chapter-end-wrap">
+        ${nextLabel
+          ? `<p class="chapter-end-label">Next Chapter</p>
+             <p class="chapter-end-name">${escapeHtml(nextLabel)}</p>
+             <button class="btn chapter-next-btn" onclick="goToNextChapter()">Read Next \u2192</button>`
+          : `<p class="chapter-end-label">Last chapter reached!</p>`}
+      </div>`);
+  }
+
+  updateReadingProgress(state.currentManga?.id, state.currentChapter?.id, idx);
+  attachBookDragEvents();
+
+  const scale = Math.max(state.zoomLevel, 1) * 1.5;
+
+  // Pre-render both pages offscreen, then inject in one shot to avoid blank-panel flash
+  async function renderToCanvas(pdfPageNum) {
+    if (pdfPageNum < 1 || pdfPageNum > total) return null;
+    try {
+      const p   = await pdf.getPage(pdfPageNum);
+      const vp  = p.getViewport({ scale });
+      const cvs = document.createElement('canvas');
+      cvs.className = 'book-page-img';
+      cvs.width  = vp.width;
+      cvs.height = vp.height;
+      cvs.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+      await p.render({ canvasContext: cvs.getContext('2d'), viewport: vp }).promise;
+      return cvs;
+    } catch (e) { console.warn('PDF spread render error:', e); return null; }
+  }
+
+  const [cvs1, cvs2] = await Promise.all([ renderToCanvas(pNum1), renderToCanvas(pNum2) ]);
+  if (!$('bookSpread')) return; // reader closed while rendering
+
+  const sL = $('bookLeft'), sR = $('bookRight');
+  if (!noFade) {
+    if (sL) sL.style.opacity = '0';
+    if (sR) sR.style.opacity = '0';
+  }
+  if (isRTL) {
+    if (cvs1 && sR) sR.appendChild(cvs1);
+    if (cvs2 && sL) sL.appendChild(cvs2);
+  } else {
+    if (cvs1 && sL) sL.appendChild(cvs1);
+    if (cvs2 && sR) sR.appendChild(cvs2);
+  }
+  if (!noFade) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (sL) { sL.style.transition = 'opacity 0.18s ease'; sL.style.opacity = '1'; }
+      if (sR) { sR.style.transition = 'opacity 0.18s ease'; sR.style.opacity = '1'; }
+    }));
+  }
+  // Restore zoom (bookSpread DOM was rebuilt so transform must be re-applied)
+  _applyBookZoom();
 }
 
 // ============================================================================

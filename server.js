@@ -11,6 +11,25 @@ const compression = require('compression');
 
 const app = express();
 app.use(compression()); // gzip all responses
+
+// ── Security headers ────────────────────────────────────────────────────────
+// Prevents MIME-sniffing, clickjacking and basic XSS attacks with minimal
+// overhead (pure in-process, no extra dependencies).
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Tight CSP: only allow same-origin scripts/styles/fonts; images from
+  // same origin + data URIs (needed for canvas toDataURL).
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data: blob: https:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'self'"
+  );
+  next();
+});
+
 app.use(express.json({ limit: "5mb" }));
 
 // When bundled as .exe (pkg), __dirname is the virtual snapshot root.
@@ -43,6 +62,26 @@ let _store = null;
 function safeId(id) {
   if (typeof id !== "string") return null;
   return /^[a-z0-9_-]{1,80}$/i.test(id) ? id : null;
+}
+
+// Whitelist the fields we actually store for a manga object so that
+// client-supplied payloads cannot inject arbitrary keys into the store
+// (prototype pollution, oversized blobs, etc.)
+function safeManga(manga) {
+  if (!manga || typeof manga !== 'object') return {};
+  const str  = (v, max = 300) => String(v ?? '').slice(0, max);
+  const arr  = (v) => (Array.isArray(v) ? v.map(x => str(x, 100)).slice(0, 50) : []);
+  return {
+    id:          str(manga.id, 100),
+    title:       str(manga.title),
+    cover:       str(manga.cover, 500),
+    author:      str(manga.author),
+    description: str(manga.description, 1000),
+    status:      str(manga.status, 50),
+    url:         str(manga.url, 500),
+    genres:      arr(manga.genres),
+    type:        str(manga.type, 20),
+  };
 }
 
 function sha1Short(input) {
@@ -302,7 +341,12 @@ app.get("/api/proxy-image", async (req, res) => {
       }
     });
     if (!imgRes.ok) return res.status(imgRes.status).end();
-    res.set("Content-Type", imgRes.headers.get("content-type") || "image/jpeg");
+    // Restrict to known image MIME types — prevents upstream from serving
+    // HTML/JS through this proxy endpoint (content-type confusion attack).
+    const upstreamCt = imgRes.headers.get("content-type") || "";
+    const ALLOWED_IMAGE_CT = /^image\/(jpeg|png|gif|webp|avif|bmp|svg\+xml)/i;
+    if (!ALLOWED_IMAGE_CT.test(upstreamCt)) return res.status(415).end();
+    res.set("Content-Type", upstreamCt.split(";")[0].trim());
     res.set("Cache-Control", "public, max-age=86400");
     Readable.fromWeb(imgRes.body).pipe(res);
   } catch (e) {
@@ -378,6 +422,7 @@ app.post("/api/sources/install", async (req, res) => {
     const code = await fetchText(source.codeUrl);
     await fsp.writeFile(sourcePath(sid), code, "utf8");
     sourceCache.delete(sid); // invalidate module cache so fresh code is loaded
+    _popularAllCache = null;  // invalidate popular-all cache so new source appears
     const mod = loadSourceFromFile(sid);
     store.installedSources[sid] = {
       id: sid,
@@ -403,6 +448,7 @@ app.post("/api/sources/uninstall", async (req, res) => {
     delete store.installedSources[sid];
     await writeStore(store);
     sourceCache.delete(sid); // clear module cache
+    _popularAllCache = null;  // invalidate popular-all cache
     const p = sourcePath(sid);
     if (fs.existsSync(p)) await fsp.unlink(p);
     res.json({ ok: true });
@@ -494,6 +540,27 @@ app.get('/api/local/list', async (_req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Serve the best available thumbnail for a local manga
+app.get('/api/local/:mangaId/thumb', async (req, res) => {
+  try {
+    const sid = safeId(req.params.mangaId);
+    if (!sid) return res.status(400).end();
+    const mangaDir = path.join(LOCAL_DIR, sid);
+    // 1. cover.jpg
+    const coverJpg = path.join(mangaDir, 'cover.jpg');
+    if (fs.existsSync(coverJpg)) return res.redirect(`/local-media/${sid}/cover.jpg`);
+    // 2. first image in images/
+    const imagesDir = path.join(mangaDir, 'images');
+    if (fs.existsSync(imagesDir)) {
+      const files = (await fsp.readdir(imagesDir))
+        .filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      if (files.length) return res.redirect(`/local-media/${sid}/images/${files[0]}`);
+    }
+    res.status(404).end();
+  } catch (e) { res.status(500).end(); }
+});
+
 app.post('/api/local/:mangaId/cover', express.raw({ type: 'image/*', limit: '5mb' }), async (req, res) => {
   try {
     const sid = safeId(req.params.mangaId);
@@ -553,7 +620,10 @@ app.post('/api/local/import', upload.single('file'), async (req, res) => {
           .sort((a, b) => a.entryName.localeCompare(b.entryName, undefined, { numeric: true, sensitivity: 'base' }));
         if (entries.length > 0) {
           for (const [i, entry] of entries.entries()) {
-            const imgExt = path.extname(entry.name) || '.jpg';
+            // Sanitise extension — only allow known image types so a crafted
+            // ZIP cannot write executable files (e.g. .php, .js) to the images dir.
+            const rawExt = path.extname(entry.name).toLowerCase();
+            const imgExt = /^\.(jpe?g|png|gif|webp)$/.test(rawExt) ? rawExt.replace('jpeg','jpg') : '.jpg';
             const filename = String(i + 1).padStart(4, '0') + imgExt;
             await fsp.writeFile(path.join(imagesDir, filename), entry.getData());
             pages.push(`/local-media/${mangaId}/images/${filename}`);
@@ -575,7 +645,9 @@ app.post('/api/local/import', upload.single('file'), async (req, res) => {
           return res.status(400).json({ error: 'No images found in CBR/RAR file.' });
         const extractedFiles = [...extractor.extract({ files: imageHeaders.map(h => h.fileHeader.name) }).files];
         for (const [i, file] of extractedFiles.entries()) {
-          const imgExt = path.extname(file.fileHeader.name) || '.jpg';
+          // Same extension allowlist as the ZIP path above
+          const rawExt = path.extname(file.fileHeader.name).toLowerCase();
+          const imgExt = /^\.(jpe?g|png|gif|webp)$/.test(rawExt) ? rawExt.replace('jpeg','jpg') : '.jpg';
           const filename = String(i + 1).padStart(4, '0') + imgExt;
           await fsp.writeFile(path.join(imagesDir, filename), Buffer.from(file.extraction));
           pages.push(`/local-media/${mangaId}/images/${filename}`);
@@ -633,8 +705,18 @@ app.post("/api/source/:id/:method", async (req, res) => {
 });
 
 // All-sources popular: fetch trending from every installed source in parallel
+// Short-lived in-process cache for /api/popular-all — avoids hammering every
+// installed source on every home-screen visit. TTL: 60 s.
+let _popularAllCache = null; // { ts: number, data: object }
+const POPULAR_ALL_TTL = 60_000;
+
 app.get("/api/popular-all", async (req, res) => {
   try {
+    // Serve from cache if still fresh
+    if (_popularAllCache && Date.now() - _popularAllCache.ts < POPULAR_ALL_TTL) {
+      return res.json(_popularAllCache.data);
+    }
+
     const store = await readStore();
     const sourceIds = Object.keys(store.installedSources || {});
     if (!sourceIds.length) return res.json({ results: [] });
@@ -661,7 +743,9 @@ app.get("/api/popular-all", async (req, res) => {
         }
       }
     }
-    res.json({ results: merged.slice(0, 40) });
+    const response = { results: merged.slice(0, 40) };
+    _popularAllCache = { ts: Date.now(), data: response };
+    res.json(response);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -672,10 +756,11 @@ app.post("/api/library/add", async (req, res) => {
     const { mangaId, sourceId, manga } = req.body || {};
     const store = await readStore();
     const existing = store.favorites.findIndex(m => m.id === mangaId && m.sourceId === sourceId);
+    const safeEntry = { ...safeManga(manga), sourceId, addedAt: new Date().toISOString() };
     if (existing >= 0) {
-      store.favorites[existing] = { ...manga, sourceId, addedAt: new Date().toISOString() };
+      store.favorites[existing] = safeEntry;
     } else {
-      store.favorites.push({ ...manga, sourceId, addedAt: new Date().toISOString() });
+      store.favorites.push(safeEntry);
     }
     await writeStore(store);
     res.json({ ok: true, favorites: store.favorites });
@@ -702,7 +787,7 @@ app.post("/api/history/add", async (req, res) => {
     const store = await readStore();
     const existing = store.history.findIndex(m => m.id === mangaId && m.sourceId === sourceId);
     if (existing >= 0) store.history.splice(existing, 1);
-    store.history.unshift({ ...manga, sourceId, chapterId, readAt: new Date().toISOString() });
+    store.history.unshift({ ...safeManga(manga), sourceId, chapterId: String(chapterId ?? '').slice(0, 200), readAt: new Date().toISOString() });
     store.history = store.history.slice(0, 100);
     await writeStore(store);
     res.json({ ok: true, history: store.history });
@@ -807,8 +892,10 @@ app.post('/api/user/status', async (req, res) => {
 
 app.get('/api/reviews/:mangaId', async (req, res) => {
   try {
+    // Sanitize key the same way the POST endpoint does so the lookup is consistent
+    const safeKey = String(req.params.mangaId || '').replace(/[^a-z0-9:_\-]/gi, '_').slice(0, 200);
     const store = await readStore();
-    res.json({ reviews: store.reviews[req.params.mangaId] || [] });
+    res.json({ reviews: store.reviews[safeKey] || [] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -871,9 +958,10 @@ app.post('/api/lists', async (req, res) => {
 
 app.put('/api/lists/:id', async (req, res) => {
   try {
+    const listId = String(req.params.id || '').slice(0, 100);
     const { name, description } = req.body || {};
     const store = await readStore();
-    const list = store.customLists.find(l => l.id === req.params.id);
+    const list = store.customLists.find(l => l.id === listId);
     if (!list) return res.status(404).json({ error: "List not found" });
     if (name) list.name = name.trim().slice(0, 100);
     if (description !== undefined) list.description = String(description).slice(0, 500);
@@ -886,8 +974,9 @@ app.put('/api/lists/:id', async (req, res) => {
 
 app.delete('/api/lists/:id', async (req, res) => {
   try {
+    const listId = String(req.params.id || '').slice(0, 100);
     const store = await readStore();
-    store.customLists = store.customLists.filter(l => l.id !== req.params.id);
+    store.customLists = store.customLists.filter(l => l.id !== listId);
     await writeStore(store);
     res.json({ ok: true });
   } catch (e) {
@@ -897,13 +986,14 @@ app.delete('/api/lists/:id', async (req, res) => {
 
 app.post('/api/lists/:id/manga', async (req, res) => {
   try {
+    const listId = String(req.params.id || '').slice(0, 100);
     const { mangaData } = req.body || {};
     if (!mangaData?.id) return res.status(400).json({ error: "mangaData.id required" });
     const store = await readStore();
-    const list = store.customLists.find(l => l.id === req.params.id);
+    const list = store.customLists.find(l => l.id === listId);
     if (!list) return res.status(404).json({ error: "List not found" });
     if (!list.mangaItems.some(m => m.id === mangaData.id)) {
-      list.mangaItems.push({ ...mangaData, addedAt: new Date().toISOString() });
+      list.mangaItems.push({ ...safeManga(mangaData), addedAt: new Date().toISOString() });
     }
     await writeStore(store);
     res.json({ ok: true, list });
@@ -914,10 +1004,12 @@ app.post('/api/lists/:id/manga', async (req, res) => {
 
 app.delete('/api/lists/:id/manga/:mangaId', async (req, res) => {
   try {
+    const listId  = String(req.params.id      || '').slice(0, 100);
+    const mId     = String(req.params.mangaId || '').slice(0, 200);
     const store = await readStore();
-    const list = store.customLists.find(l => l.id === req.params.id);
+    const list = store.customLists.find(l => l.id === listId);
     if (!list) return res.status(404).json({ error: "List not found" });
-    list.mangaItems = list.mangaItems.filter(m => m.id !== req.params.mangaId);
+    list.mangaItems = list.mangaItems.filter(m => m.id !== mId);
     await writeStore(store);
     res.json({ ok: true, list });
   } catch (e) {
@@ -972,7 +1064,8 @@ app.get('/api/ratings', async (req, res) => {
 // Delete a rating (clear the review for a manga)
 app.delete('/api/ratings/:mangaId', async (req, res) => {
   try {
-    const { mangaId } = req.params;
+    const mangaId = safeId(req.params.mangaId);
+    if (!mangaId) return res.status(400).json({ error: 'Invalid mangaId' });
     const store = await readStore();
     delete store.reviews[mangaId];
     await writeStore(store);
@@ -984,9 +1077,13 @@ app.delete('/api/ratings/:mangaId', async (req, res) => {
 app.post('/api/analytics/session', async (req, res) => {
   try {
     const { mangaId, chapterId, duration } = req.body || {};
+    // Cap free-form strings to prevent unbounded store growth
+    const safeMid = String(mangaId   ?? '').slice(0, 200);
+    const safeCid = String(chapterId ?? '').slice(0, 200);
     const store = await readStore();
     const a = store.analytics;
-    const mins = Math.max(0, Number(duration) || 0);
+    // Clamp duration: max 1440 minutes (24 h) to prevent bogus entries inflating analytics
+    const mins = Math.min(1440, Math.max(0, Number(duration) || 0));
 
     a.totalTimeSpent = (a.totalTimeSpent || 0) + mins;
     a.totalChaptersRead = (a.totalChaptersRead || 0) + 1;
@@ -1000,7 +1097,7 @@ app.post('/api/analytics/session', async (req, res) => {
     }
 
     a.readingSessions = a.readingSessions || [];
-    a.readingSessions.unshift({ mangaId, chapterId, duration: mins, date: new Date().toISOString() });
+    a.readingSessions.unshift({ mangaId: safeMid, chapterId: safeCid, duration: mins, date: new Date().toISOString() });
     a.readingSessions = a.readingSessions.slice(0, 200);
 
     await writeStore(store);
@@ -1027,11 +1124,14 @@ app.get('/api/achievements', async (req, res) => {
 app.post('/api/achievements/unlock', async (req, res) => {
   try {
     const { achievementId } = req.body || {};
-    if (!achievementId) return res.status(400).json({ error: "achievementId required" });
+    if (!achievementId || typeof achievementId !== 'string')
+      return res.status(400).json({ error: "achievementId required" });
+    // Only allow achievement IDs that look like safe identifiers
+    const safeAchId = achievementId.slice(0, 100).replace(/[^a-z0-9_-]/gi, '_');
     const store = await readStore();
-    const isNew = !store.achievements.includes(achievementId);
+    const isNew = !store.achievements.includes(safeAchId);
     if (isNew) {
-      store.achievements.push(achievementId);
+      store.achievements.push(safeAchId);
       await writeStore(store);
     }
     res.json({ ok: true, isNew, achievements: store.achievements });
@@ -1045,15 +1145,23 @@ app.post('/api/achievements/unlock', async (req, res) => {
 // ============================================================================
 
 // Helper: fetch an image URL and return a Buffer (with referer/UA headers)
-async function fetchImageBuffer(url) {
-  const resp = await fetch(url, {
-    headers: {
-      'Referer': 'https://mangadex.org/',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
-  return Buffer.from(await resp.arrayBuffer());
+async function fetchImageBuffer(url, referer = 'https://mangadex.org/') {
+  // Enforce 30-second per-image timeout so a slow/hung CDN doesn't stall downloads
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const resp = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'Referer': referer,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
+    return Buffer.from(await resp.arrayBuffer());
+  } finally {
+    clearTimeout(tid);
+  }
 }
 
 // Download individual chapter as CBZ
@@ -1111,6 +1219,11 @@ app.post("/api/download/bulk", async (req, res) => {
       }
       const folder = safe(ch.name);
       for (let i = 0; i < pages.length; i++) {
+        // SSRF guard: source-provided URLs must be public HTTP/HTTPS
+        if (!isSafeUrl(pages[i])) {
+          console.warn(`[bulk-dl] skipped unsafe URL: ${pages[i]}`);
+          continue;
+        }
         try {
           const buf = await fetchImageBuffer(pages[i]);
           const ext = (pages[i].match(/\.(jpe?g|png|webp|gif)/i) || ['', 'jpg'])[1].replace('jpeg','jpg');
@@ -1136,9 +1249,11 @@ app.post("/api/download/bulk", async (req, res) => {
 app.post("/api/mangaupdates/search", async (req, res) => {
   try {
     const { title } = req.body;
-    if (!title) {
+    if (!title || typeof title !== 'string') {
       return res.status(400).json({ error: "Title is required" });
     }
+    // Cap search query to avoid sending large payloads to MangaUpdates
+    const safeTitle = title.trim().slice(0, 200);
 
     // Search MangaUpdates API
     const searchUrl = `https://api.mangaupdates.com/v1/series/search`;
@@ -1148,7 +1263,7 @@ app.post("/api/mangaupdates/search", async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        search: title,
+        search: safeTitle,
         perpage: 5
       })
     });
@@ -1164,8 +1279,10 @@ app.post("/api/mangaupdates/search", async (req, res) => {
       return res.json({ found: false, message: "No results found on MangaUpdates" });
     }
 
-    // Get the most relevant result (first one)
-    const seriesId = results[0].record.series_id;
+    // Validate seriesId before interpolating into a URL
+    const seriesId = Number(results[0].record?.series_id);
+    if (!Number.isFinite(seriesId) || seriesId <= 0)
+      throw new Error('Invalid series_id in MangaUpdates response');
     
     // Fetch detailed info
     const detailsUrl = `https://api.mangaupdates.com/v1/series/${seriesId}`;

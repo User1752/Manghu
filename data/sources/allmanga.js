@@ -1,97 +1,136 @@
-const cheerio = require('cheerio');
+﻿// AllManga.to source  uses the GraphQL API at https://api.allanime.day/api
+// v1.0.0
 
-const BASE = 'https://allmanga.to';
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0',
-  'Referer': BASE
+const API = 'https://api.allanime.day/api';
+const COVER_BASE = 'https://wp.youtube-anime.com/aln.youtube-anime.com/';
+const WEB_BASE = 'https://allmanga.to';
+
+const GQL_HEADERS = {
+  'Content-Type': 'application/json',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 };
 
-function normCover(url) {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return BASE + url;
+async function gql(query) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: GQL_HEADERS,
+    body: JSON.stringify({ query }),
+  });
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors[0].message);
+  return json.data;
+}
+
+function thumbUrl(thumbnail) {
+  if (!thumbnail) return '';
+  if (thumbnail.startsWith('http')) return thumbnail;
+  return COVER_BASE + thumbnail + '?w=500';
+}
+
+function mapEdge(e) {
+  return {
+    id: e._id,
+    title: e.name || e._id,
+    cover: thumbUrl(e.thumbnail),
+    url: `${WEB_BASE}/manga/${e._id}`,
+    genres: e.genres || [],
+    status: normalizeStatus(e.status),
+    author: (e.authors || [])[0] || '',
+  };
+}
+
+function normalizeStatus(s) {
+  if (!s) return 'unknown';
+  const l = s.toLowerCase();
+  if (l.includes('releas') || l.includes('ongoing') || l.includes('publishing')) return 'ongoing';
+  if (l.includes('finish') || l.includes('complet')) return 'completed';
+  return l || 'unknown';
 }
 
 module.exports = {
   meta: {
     id: 'allmanga',
     name: 'AllManga.to',
-    version: '0.1.0',
+    version: '1.0.0',
     author: 'auto',
-    icon: ''
+    icon: '',
   },
 
   async search(query, page = 1) {
-    const url = `${BASE}/manga?cty=ALL&page=${page}&q=${encodeURIComponent(query)}`;
-    const res = await fetch(url, { headers: HEADERS });
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const results = [];
-    $('.manga-list .manga-item').each((_, el) => {
-      const a = $(el).find('a.manga-poster');
-      const href = a.attr('href') || '';
-      const id = href.replace('/manga/', '').split('?')[0];
-      const title = a.attr('title') || $(el).find('.manga-title').text().trim();
-      const cover = normCover(a.find('img').attr('data-src') || a.find('img').attr('src'));
-      results.push({ id, title, cover, url: BASE + href, genres: [], status: 'unknown', author: '' });
-    });
-    const hasNextPage = $('.pagination .next').length > 0;
-    return { results, hasNextPage };
+    const q = `{ mangas(search:{query:${JSON.stringify(query || '')}}, limit:30, page:${page}) { edges { _id name thumbnail } } }`;
+    const data = await gql(q);
+    const edges = data.mangas?.edges || [];
+    return { results: edges.map(mapEdge), hasNextPage: edges.length >= 30 };
   },
+
   async trending() {
-    // Trending: usar a home (sem query, page 1)
-    return this.search('', 1);
+    const q = `{ mangas(search:{sortBy: Popular}, limit:20, page:1) { edges { _id name thumbnail } } }`;
+    const data = await gql(q);
+    return { results: (data.mangas?.edges || []).map(mapEdge) };
   },
+
   async recentlyAdded() {
-    // Recently Added: usar a home (sem query, page 1)
-    return this.search('', 1);
+    const q = `{ mangas(search:{sortBy: Latest_Update}, limit:20, page:1) { edges { _id name thumbnail } } }`;
+    const data = await gql(q);
+    return { results: (data.mangas?.edges || []).map(mapEdge) };
   },
+
   async latestUpdates() {
-    // Latest Updates: usar a home (sem query, page 1)
-    return this.search('', 1);
+    return this.recentlyAdded();
   },
 
   async mangaDetails(mangaId) {
-    const url = `${BASE}/manga/${mangaId}`;
-    const res = await fetch(url, { headers: HEADERS });
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const title = $('h1').first().text().trim() || mangaId;
-    const cover = normCover($('.manga-poster img').attr('data-src') || $('.manga-poster img').attr('src'));
-    const description = $('.manga-description').text().trim() || '';
-    const status = $('.manga-status').text().trim().toLowerCase() || 'unknown';
-    const genres = [];
-    $('.manga-genres a').each((_, el) => genres.push($(el).text().trim()));
-    const author = $('.manga-author').text().trim() || '';
-    return { id: mangaId, title, cover, description, status, genres, author, url };
+    const q = `{ manga(_id:${JSON.stringify(mangaId)}) { _id name thumbnail description status genres authors } }`;
+    const data = await gql(q);
+    const m = data.manga;
+    if (!m) throw new Error('Manga not found');
+    return {
+      id: m._id,
+      title: m.name,
+      cover: thumbUrl(m.thumbnail),
+      description: (m.description || '').replace(/<[^>]+>/g, ' ').trim(),
+      status: normalizeStatus(m.status),
+      genres: m.genres || [],
+      author: (m.authors || [])[0] || '',
+      url: `${WEB_BASE}/manga/${m._id}`,
+    };
   },
 
   async chapters(mangaId) {
-    const url = `${BASE}/manga/${mangaId}`;
-    const res = await fetch(url, { headers: HEADERS });
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const chapters = [];
-    $('.chapter-list .chapter-item').each((_, el) => {
-      const a = $(el).find('a');
-      const href = a.attr('href') || '';
-      const id = href.replace('/chapter/', '').split('?')[0];
-      const name = a.text().trim();
-      chapters.push({ id, name, chapter: name, url: BASE + href, publishAt: null, pages: [] });
-    });
+    const q = `{ manga(_id:${JSON.stringify(mangaId)}) { availableChaptersDetail } }`;
+    const data = await gql(q);
+    const detail = data.manga?.availableChaptersDetail || {};
+    const nums = detail.sub || detail.raw || [];
+    const chapters = nums.map(num => ({
+      id: `${mangaId}/chapter-${num}-sub`,
+      name: `Chapter ${num}`,
+      chapter: String(num),
+      url: `${WEB_BASE}/manga/${mangaId}/chapter-${num}-sub`,
+    }));
+    // Sort newest-first
+    chapters.sort((a, b) => parseFloat(b.chapter) - parseFloat(a.chapter));
     return { chapters };
   },
 
   async pages(chapterId) {
-    const url = `${BASE}/chapter/${chapterId}`;
-    const res = await fetch(url, { headers: HEADERS });
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const pages = [];
-    $('.reader-area img').each((_, el) => {
-      const img = $(el).attr('data-src') || $(el).attr('src');
-      if (img) pages.push({ img: normCover(img) });
+    // chapterId = "MANGAID/chapter-NUM-sub"
+    const parts = chapterId.match(/^(.+?)\/chapter-([\d.]+)-sub$/);
+    if (!parts) throw new Error(`Invalid chapterId: ${chapterId}`);
+    const mangaId = parts[1];
+    const chapterString = parts[2];
+    const q = `{ chapterPages(mangaId:${JSON.stringify(mangaId)}, chapterString:${JSON.stringify(chapterString)}, translationType: sub) { edges { pictureUrls pictureUrlHead } } }`;
+    const data = await gql(q);
+    const edge = (data.chapterPages?.edges || [])[0];
+    if (!edge) return { pages: [] };
+    const head = edge.pictureUrlHead || '';
+    const REF  = encodeURIComponent('https://allmanga.to');
+    const pages = (edge.pictureUrls || []).map(p => {
+      const raw = head + p.url;
+      return {
+        img: `/api/proxy-image?url=${encodeURIComponent(raw)}&ref=${REF}`,
+        index: p.num,
+      };
     });
     return { pages };
-  }
+  },
 };
