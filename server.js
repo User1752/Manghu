@@ -4,18 +4,25 @@ const fs = require("fs");
 const fsp = fs.promises;
 const path = require("path");
 const crypto = require("crypto");
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { Readable } = require("stream");
 const multer = require('multer');
 const AdmZip  = require('adm-zip');
-
 const compression = require('compression');
 
 const app = express();
 app.use(compression()); // gzip all responses
 app.use(express.json({ limit: "5mb" }));
 
-const DATA_DIR   = path.join(__dirname, "data");
+// When bundled as .exe (pkg), __dirname is the virtual snapshot root.
+// User-writable data (store, cache, downloads) must live next to the exe.
+const IS_PKG = typeof process.pkg !== 'undefined';
+const USER_ROOT  = IS_PKG ? path.dirname(process.execPath) : __dirname;
+const DATA_DIR   = path.join(USER_ROOT, "data");
+// User-writable sources dir — drop/replace .js files here to update scrapers
+// without rebuilding the exe. Seeded from snapshot on first run.
 const SOURCES_DIR = path.join(DATA_DIR, "sources");
+// Bundled snapshot sources — read-only fallback baked into the exe
+const SNAP_SOURCES_DIR = path.join(__dirname, "data", "sources");
 const STORE_PATH  = path.join(DATA_DIR, "store.json");
 const CACHE_DIR   = path.join(DATA_DIR, "cache");
 const LOCAL_DIR   = path.join(DATA_DIR, "local");
@@ -23,6 +30,9 @@ const TMP_DIR     = path.join(DATA_DIR, "tmp");
 const PORT = process.env.PORT || 3000;
 
 const reposCache = new Map();
+// Per-module require() cache — avoids re-parsing source files on every API call.
+// Cleared on install/uninstall so stale code is never served.
+const sourceCache = new Map();
 const upload = multer({ dest: TMP_DIR, limits: { fileSize: 500 * 1024 * 1024 } });
 
 // In-memory store cache — eliminates read/write race conditions.
@@ -43,6 +53,17 @@ async function ensureDirs() {
   for (const dir of [DATA_DIR, SOURCES_DIR, CACHE_DIR, LOCAL_DIR, TMP_DIR]) {
     await fsp.mkdir(dir, { recursive: true });
   }
+  // Seed user sources dir from bundled snapshot on first run (or when a file is missing).
+  // Users can then edit/replace these files to update sources without rebuilding the exe.
+  if (IS_PKG && fs.existsSync(SNAP_SOURCES_DIR)) {
+    for (const file of fs.readdirSync(SNAP_SOURCES_DIR).filter(f => f.endsWith('.js'))) {
+      const dest = path.join(SOURCES_DIR, file);
+      if (!fs.existsSync(dest)) {
+        fs.copyFileSync(path.join(SNAP_SOURCES_DIR, file), dest);
+        console.log(`✦ Seeded source: ${file}`);
+      }
+    }
+  }
   if (!fs.existsSync(STORE_PATH)) {
     await fsp.writeFile(
       STORE_PATH,
@@ -57,67 +78,122 @@ async function readStore() {
     // Fallback: read from disk (should normally only run at startup via initStore)
     const raw = await fsp.readFile(STORE_PATH, "utf8");
     _store = JSON.parse(raw);
+    normaliseStore(_store);
   }
-  // Normalise / migrate fields in-place
-  _store.repos = Array.isArray(_store.repos) ? _store.repos.map(r => ({
+  return _store;
+}
+
+async function writeStore(store) {
+  _store = store; // update in-memory cache synchronously so concurrent reads see the new state
+  debouncedFlush();
+}
+
+// Debounced disk writes — coalesces rapid mutations into a single write.
+let _flushTimer = null;
+function debouncedFlush() {
+  if (_flushTimer) clearTimeout(_flushTimer);
+  _flushTimer = setTimeout(async () => {
+    _flushTimer = null;
+    try {
+      await fsp.writeFile(STORE_PATH, JSON.stringify(_store, null, 2), "utf8");
+    } catch (e) {
+      console.error("Store write error:", e.message);
+    }
+  }, 300);
+}
+
+// Force-flush on shutdown
+function flushStoreSync() {
+  if (_store) {
+    try { fs.writeFileSync(STORE_PATH, JSON.stringify(_store, null, 2), "utf8"); }
+    catch (e) { console.error("Shutdown flush error:", e.message); }
+  }
+}
+process.on('SIGINT',  () => { flushStoreSync(); process.exit(0); });
+process.on('SIGTERM', () => { flushStoreSync(); process.exit(0); });
+
+async function initStore() {
+  if (!fs.existsSync(STORE_PATH)) return;
+  const raw = await fsp.readFile(STORE_PATH, "utf8");
+  _store = JSON.parse(raw);
+  normaliseStore(_store); // run once at startup, not on every readStore() call
+}
+
+// Migrate / fill missing fields — runs once at startup only.
+function normaliseStore(s) {
+  s.repos = Array.isArray(s.repos) ? s.repos.map(r => ({
     ...r,
     kind: r.kind || "jsrepo",
     name: r.name || r.url
   })) : [];
-  _store.installedSources = _store.installedSources || {};
-  _store.history   = _store.history   || [];
-  _store.favorites = _store.favorites || [];
-  _store.readingStatus = _store.readingStatus || {};
-  _store.reviews   = _store.reviews   || {};
-  _store.customLists = _store.customLists || [];
-  _store.analytics = _store.analytics || {
+  s.installedSources = s.installedSources || {};
+  s.history          = s.history          || [];
+  s.favorites        = s.favorites        || [];
+  s.readingStatus    = s.readingStatus    || {};
+  s.reviews          = s.reviews          || {};
+  s.customLists      = s.customLists      || [];
+  s.analytics        = s.analytics || {
     totalChaptersRead: 0,
     totalTimeSpent: 0,
     readingSessions: [],
     dailyStreak: 0,
     lastReadDate: null
   };
-  _store.achievements = _store.achievements || [];
-  return _store;
-}
-
-async function writeStore(store) {
-  _store = store; // update in-memory cache synchronously so concurrent reads see the new state
-  await fsp.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
-}
-
-async function initStore() {
-  if (!fs.existsSync(STORE_PATH)) return; // ensureDirs already created it; readStore will handle the empty case
-  const raw = await fsp.readFile(STORE_PATH, "utf8");
-  _store = JSON.parse(raw);
+  s.achievements = s.achievements || [];
 }
 
 async function fetchJson(url) {
-  const res = await fetch(url, { redirect: "follow", timeout: 10000 });
+  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
 
 async function fetchText(url) {
-  const res = await fetch(url, { redirect: "follow", timeout: 10000 });
+  const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.text();
 }
 
+// ── SSRF guard — reject URLs that resolve to private / loopback addresses ──
+const PRIVATE_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.0\.0\.0|::1$|fc00:|fe80:)/i;
+function isSafeUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    const host = u.hostname.replace(/\[|\]/g, ''); // strip IPv6 brackets
+    return !PRIVATE_IP_RE.test(host) && host !== 'localhost';
+  } catch { return false; }
+}
+
 function sourcePath(id) {
-  return path.join(SOURCES_DIR, `${id}.js`);
+  // Prefer user-filesystem version so sources can be updated without rebuilding exe
+  const userPath = path.join(SOURCES_DIR, `${id}.js`);
+  // Confinement: resolved path must stay inside SOURCES_DIR or SNAP_SOURCES_DIR
+  const resolvedUser = path.resolve(userPath);
+  const inSources = resolvedUser.startsWith(path.resolve(SOURCES_DIR) + path.sep);
+  if (inSources && fs.existsSync(resolvedUser)) return resolvedUser;
+  // Fall back to bundled snapshot (pkg only)
+  if (IS_PKG) {
+    const snapPath = path.resolve(path.join(SNAP_SOURCES_DIR, `${id}.js`));
+    if (snapPath.startsWith(path.resolve(SNAP_SOURCES_DIR) + path.sep) && fs.existsSync(snapPath)) return snapPath;
+  }
+  return userPath; // will throw naturally if not found
 }
 
 function loadSourceFromFile(id) {
+  // Return cached module if already loaded
+  if (sourceCache.has(id)) return sourceCache.get(id);
   const p = sourcePath(id);
   if (!fs.existsSync(p)) throw new Error("Source not found");
-  delete require.cache[require.resolve(p)];
+  // Clear require cache so a freshly dropped file is picked up
+  try { delete require.cache[require.resolve(p)]; } catch (_) {}
   const mod = require(p);
   if (!mod?.meta?.id) throw new Error("Invalid source: missing meta.id");
   if (typeof mod.search !== "function") throw new Error("Source missing search()");
   if (typeof mod.mangaDetails !== "function") throw new Error("Source missing mangaDetails()");
   if (typeof mod.chapters !== "function") throw new Error("Source missing chapters()");
   if (typeof mod.pages !== "function") throw new Error("Source missing pages()");
+  sourceCache.set(id, mod);
   return mod;
 }
 
@@ -177,9 +253,19 @@ async function listAvailableSourcesFromRepos(repos) {
 
 async function autoInstallLocalSources() {
   const store = await readStore();
-  const localSourceFiles = fs.readdirSync(SOURCES_DIR).filter(f => f.endsWith(".js"));
-  for (const file of localSourceFiles) {
-    const id = file.replace(".js", "");
+  // Collect unique IDs from both locations; user filesystem takes priority over snapshot
+  const seen = new Set();
+  const allIds = [];
+  const scanDir = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) {
+      const id = f.replace('.js', '');
+      if (!seen.has(id)) { seen.add(id); allIds.push(id); }
+    }
+  };
+  scanDir(SOURCES_DIR);                    // user filesystem (hot-swappable)
+  if (IS_PKG) scanDir(SNAP_SOURCES_DIR);  // bundled fallback
+  for (const id of allIds) {
     if (store.installedSources[id]) continue;
     try {
       const mod = loadSourceFromFile(id);
@@ -204,18 +290,21 @@ async function autoInstallLocalSources() {
 // ============================================================================
 app.get("/api/proxy-image", async (req, res) => {
   const { url, ref } = req.query;
-  if (!url || !/^https?:\/\//.test(url)) return res.status(400).end();
+  // Validate: must be a public http/https URL (SSRF guard)
+  if (!url || !isSafeUrl(url)) return res.status(400).end();
+  // Validate referer origin too
+  const safeRef = (ref && isSafeUrl(ref)) ? ref : undefined;
   try {
     const imgRes = await fetch(url, {
       headers: {
-        "Referer": ref || "https://mangapill.com",
+        "Referer": safeRef || "https://mangapill.com",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
     });
     if (!imgRes.ok) return res.status(imgRes.status).end();
     res.set("Content-Type", imgRes.headers.get("content-type") || "image/jpeg");
     res.set("Cache-Control", "public, max-age=86400");
-    imgRes.body.pipe(res);
+    Readable.fromWeb(imgRes.body).pipe(res);
   } catch (e) {
     res.status(500).end();
   }
@@ -285,8 +374,10 @@ app.post("/api/sources/install", async (req, res) => {
     const source = available.find(s => s.id === sid);
     if (!source) return res.status(404).json({ error: "Source não encontrado" });
     if (source.kind !== "js") return res.status(400).json({ error: "Source não compatível" });
+    if (!isSafeUrl(source.codeUrl)) return res.status(400).json({ error: "URL de source inválida" });
     const code = await fetchText(source.codeUrl);
     await fsp.writeFile(sourcePath(sid), code, "utf8");
+    sourceCache.delete(sid); // invalidate module cache so fresh code is loaded
     const mod = loadSourceFromFile(sid);
     store.installedSources[sid] = {
       id: sid,
@@ -311,6 +402,7 @@ app.post("/api/sources/uninstall", async (req, res) => {
     const store = await readStore();
     delete store.installedSources[sid];
     await writeStore(store);
+    sourceCache.delete(sid); // clear module cache
     const p = sourcePath(sid);
     if (fs.existsSync(p)) await fsp.unlink(p);
     res.json({ ok: true });
@@ -655,7 +747,9 @@ app.post('/api/user/status', async (req, res) => {
     const { mangaId, sourceId, status, mangaData } = req.body || {};
     if (!mangaId || !sourceId) return res.status(400).json({ error: "mangaId and sourceId required" });
     const store = await readStore();
-    const key = `${mangaId}:${sourceId}`;
+    // Sanitize composite key against prototype pollution
+    const rawKey = `${mangaId}:${sourceId}`;
+    const key = rawKey.replace(/[^a-z0-9:_\-]/gi, '_').slice(0, 300);
     if (!status || status === 'none') {
       delete store.readingStatus[key];
     } else {
@@ -690,16 +784,18 @@ app.post('/api/reviews', async (req, res) => {
   try {
     const { mangaId, rating, text } = req.body || {};
     if (!mangaId || !rating) return res.status(400).json({ error: "mangaId and rating required" });
+    // Sanitize key to prevent prototype pollution (__proto__, constructor, etc.)
+    const safeKey = String(mangaId).replace(/[^a-z0-9:_\-]/gi, '_').slice(0, 200);
+    if (!safeKey) return res.status(400).json({ error: "Invalid mangaId" });
     const store = await readStore();
-    if (!store.reviews[mangaId]) store.reviews[mangaId] = [];
-    // Replace if user already has a review (single-user app)
-    store.reviews[mangaId] = [{
+    if (!Object.prototype.hasOwnProperty.call(store.reviews, safeKey)) store.reviews[safeKey] = [];
+    store.reviews[safeKey] = [{
       rating: Math.min(10, Math.max(1, Number(rating))),
       text: String(text || "").slice(0, 2000),
       date: new Date().toISOString()
-    }, ...store.reviews[mangaId].slice(0, 19)];
+    }, ...store.reviews[safeKey].slice(0, 19)];
     await writeStore(store);
-    res.json({ ok: true, reviews: store.reviews[mangaId] });
+    res.json({ ok: true, reviews: store.reviews[safeKey] });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -932,12 +1028,15 @@ app.post("/api/download/chapter", async (req, res) => {
     if (!pages || !Array.isArray(pages) || pages.length === 0) {
       return res.status(400).json({ error: "No pages provided" });
     }
+    // Validate all page URLs are safe external URLs before fetching
+    const safePages = pages.filter(p => typeof p === 'string' && isSafeUrl(p));
+    if (safePages.length === 0) return res.status(400).json({ error: "No valid page URLs" });
 
     const zip = new AdmZip();
-    for (let i = 0; i < pages.length; i++) {
+    for (let i = 0; i < safePages.length; i++) {
       try {
-        const buf = await fetchImageBuffer(pages[i]);
-        const ext = (pages[i].match(/\.(jpe?g|png|webp|gif)/i) || ['', 'jpg'])[1].replace('jpeg','jpg');
+        const buf = await fetchImageBuffer(safePages[i]);
+        const ext = (safePages[i].match(/\.(jpe?g|png|webp|gif)/i) || ['', 'jpg'])[1].replace('jpeg','jpg');
         zip.addFile(`${String(i + 1).padStart(3, '0')}.${ext}`, buf);
       } catch (e) {
         console.warn(`[download] skipped page ${i + 1}: ${e.message}`);
@@ -1073,21 +1172,31 @@ app.post("/api/mangaupdates/search", async (req, res) => {
 // ============================================================================
 // STATIC FILES
 // ============================================================================
-// Long-term caching for all static assets (JS/CSS/images).
-// Browser will reuse cached files for 7 days without re-requesting.
+// Static files — cache immutable assets, revalidate HTML/JS/CSS.
 app.use("/", express.static(path.join(__dirname, "public"), {
-  maxAge: '7d',
+  maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
   etag: true,
-  lastModified: true
+  lastModified: true,
+  setHeaders(res, filePath) {
+    // CSS/JS change often during dev — short cache; images are stable
+    if (/\.(css|js|html)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+  }
 }));
 
 ensureDirs()
   .then(() => initStore())
   .then(() => autoInstallLocalSources())
   .then(() => {
-    app.listen(PORT, "0.0.0.0", () => {
+    app.listen(PORT, "127.0.0.1", () => {
       console.log(`🎌 Manghu running on http://localhost:${PORT}`);
       console.log(`📚 Sources instaladas automaticamente!`);
+      if (IS_PKG) {
+        // Auto-open browser when running as standalone exe
+        const { exec } = require('child_process');
+        exec(`start http://localhost:${PORT}`);
+      }
     });
   })
   .catch(e => {

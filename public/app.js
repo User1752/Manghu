@@ -802,6 +802,7 @@ function renderSourceSelect() {
       state.currentSourceId = installed[0].id;
     }
     sel.value = state.currentSourceId;
+    sel.dispatchEvent(new Event('change', { bubbles: false }));
     sel.onchange = () => { 
       state.currentSourceId = sel.value;
       if (state.currentView === 'advanced-search') {

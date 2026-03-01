@@ -1,5 +1,3 @@
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-
 // Build MangaDex order query param from an orderBy string like 'followedCount', '-title', 'latestUploadedChapter'
 function buildOrderParam(orderBy, fallback = 'followedCount') {
   if (!orderBy || orderBy === 'relevance') return `order[${fallback}]=desc`;
