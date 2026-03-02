@@ -20,4 +20,3 @@ Thumbs.db
 
 # Planning artefacts
 mvp.sql
-docker compose up -d --build
