@@ -533,8 +533,17 @@
       </div>
     </div>
   </div>
-    <script src="./customSelect.js?v=2" defer></script>  <script src="./achievement-manager.js" defer></script>
+    <script src="./customSelect.js?v=2" defer></script>
+  <script src="./achievement-manager.js" defer></script>
   <script src="./themes.js" defer></script>
-  <script src="./app.js?v=3" defer></script>
+
+  <!-- Manghu modules — loaded in dependency order, all before app.js -->
+  <script src="./modules/api.js" defer></script>
+  <script src="./modules/i18n.js" defer></script>
+  <script src="./modules/state.js" defer></script>
+  <script src="./modules/navigation.js" defer></script>
+  <script src="./modules/utils.js" defer></script>
+
+  <script src="./app.js?v=4" defer></script>
 </body>
 </html>

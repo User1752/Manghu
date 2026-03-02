@@ -1,346 +1,375 @@
-# Manghu — Self-Hosted Manga Reader
+# Manghu
 
-A self-hosted web manga reader built with Node.js and vanilla JS.  
-Supports **MangaDex** and **MangaPill** as online sources, plus local file imports (CBZ, CBR, PDF).
+**A self-hosted manga reader** that aggregates multiple online sources, tracks your reading progress, and runs as a standalone executable or inside Docker.
+
+---
+
+## Table of Contents
+
+1. [Features](#features)
+2. [Quick Start](#quick-start)
+3. [Architecture](#architecture)
+4. [Backend Module Reference](#backend-module-reference)
+5. [Frontend Module Reference](#frontend-module-reference)
+6. [API Reference](#api-reference)
+7. [Source Plugin API](#source-plugin-api)
+8. [Security](#security)
+9. [Performance Notes](#performance-notes)
+10. [Platform Support](#platform-support)
+11. [Build Instructions](#build-instructions)
+12. [Docker](#docker)
+13. [Configuration](#configuration)
 
 ---
 
 ## Features
 
-**Reading**
-- LTR, RTL, and Webtoon (vertical scroll) reading modes
-- **PDF support** — full Webtoon scroll and single-page LTR/RTL for imported PDFs, rendered client-side via PDF.js
-- Zoom controls (+/−/reset) with keyboard shortcuts
-- Auto-scroll with adjustable speed
-- Automatic progress saving — resume where you left off
-- Mark chapters as read / unread
-- Right-click chapter menu: mark read, mark unread, flag (highlight)
-
-**Sources**
-- **MangaDex** — Official API (stable, no scraping)
-- **MangaPill** — HTML scraper
-- **Source-switch dropdown** on the manga detail page — click the source badge to search the same title on any other installed source and open it instantly
-- Opening a library manga automatically switches to its original source
-- Drop any `.js` file in `data/sources/` and it is auto-installed on startup
-
-**Search & Discovery**
-- Source selector in the top bar — switch between MangaDex and MangaPill at any time
-- Advanced Search with genre checkboxes, status, and sort order
-- Random manga button
-- Personalised recommendations based on your library genres
-
-**Local Manga Import**
-- Import CBZ, CBR, and PDF files (up to 500 MB) directly from your device
-- **First page of PDFs is auto-rendered as the cover image** (via PDF.js, no server-side processing)
-- Files are stored on the server and served like any other manga
-- Delete local manga from the library at any time
-
-**Library & Organisation**
-- Add manga from any source to your personal library
-- Import local files (CBZ/CBR/PDF) — they appear in the library automatically
-- Reading status per manga: Reading, Completed, On Hold, Plan to Read, Dropped
-- Filter library by reading status
-
-**History**
-- Automatic reading history — every manga you open is tracked
-- Dedicated History view in the sidebar
-- Remove individual entries, or **clear all history** from Settings
-
-**Downloads**
-- Download individual chapters as CBZ
-- Bulk download multiple chapters at once
-- Chapter integrity check via MangaUpdates.com integration
-
-**Reviews & Ratings**
-- Rate manga 1–10 with optional text review
-
-**Analytics & Achievements**
-- Track chapters read, time spent, and daily streak
-- Status distribution chart
-- Unlockable achievements with in-app notifications
-
-**Interface**
-- Dark and Light mode
-- English & Portuguese language support
-- Toast notifications for all actions
-- Responsive — works on mobile and desktop
+- **Multiple sources**  MangaDex, AllManga, MangaPill; add your own in `data/sources/`
+- **CBZ / CBR / PDF import**  read your local files through the same reader
+- **Reading progress tracking**  per-chapter read markers, continue-reading, history
+- **Library & lists**  favorites, custom lists, reading status (Reading / Completed / On hold)
+- **Achievements & AP shop**  unlock achievements, spend AP on community themes
+- **Analytics**  daily reading streaks, time spent, chapter counts
+- **Recommendation engine**  genre-based suggestions from your library
+- **Bulk CBZ download**  download entire series as CBZ archives
+- **i18n**  English and Portuguese; add more locales in `public/modules/i18n.js`
+- **Theming**  dark/light mode + community themes defined in `public/themes.js`
 
 ---
 
 ## Quick Start
 
-### Docker (recommended)
-
-```bash
-cd docker
-docker compose up --build
+### Windows (Docker)
+```bat
+Manghu.bat
 ```
 
-Open: http://localhost:3000
+### Linux / macOS (Docker)
+```bash
+chmod +x manghu.sh
+./manghu.sh
+```
 
-> Data is persisted in `data/` on the host via a Docker volume — your library and imported files survive restarts and rebuilds.
-
-### Local
-
+### Standalone (Node.js, any platform)
 ```bash
 npm install
-npm start
+node server.js
+#  http://localhost:3000
 ```
 
-Open: http://localhost:3000
+### Standalone executable
+
+Download a pre-built binary from the Releases page, or [build it yourself](#build-instructions).
 
 ---
 
-## User Guide
-
-### Searching for Manga
-
-1. Select a source from the top bar (MangaDex or MangaPill)
-2. Enter a title in the search bar and press Enter
-3. Click any result to open the manga detail page
-4. For advanced filters (genre, status, sort) use **Advanced Search** in the sidebar
-
-### Switching Source on a Manga
-
-On any manga detail page, click the **🌐 SourceName ▾** badge in the metadata row.  
-A dropdown lists all other installed sources. Selecting one searches the manga title there and opens the first matching result — source context switches automatically.
-
-### Managing Your Library
-
-- Click **Add to Library** on any manga detail page
-- Opening a library card automatically switches to the source it was saved from
-- Use the **Reading Status** dropdown to track progress
-- Go to **Library** in the sidebar — filter by status or scroll down for imported local files
-
-### Importing Local Manga
-
-1. Go to **Library** in the sidebar
-2. Click **⬆ Import Local**
-3. Drag and drop or select a `.cbz`, `.cbr`, or `.pdf` file
-4. Optionally set a custom title
-5. Click **Import** — the manga appears in the library immediately with a cover image
-
-Imported files are stored in `data/local/` on the server and persist across restarts.  
-PDF cover images are generated automatically from page 1 on import.
-
-### Reading a Chapter
-
-1. Open a manga and click any chapter
-2. Navigate with arrow buttons or keyboard:
-   - `→` / `d` — next page
-   - `←` / `a` — previous page
-   - `Escape` — close reader
-   - `+` / `=` — zoom in
-   - `-` — zoom out
-3. Change reading mode (LTR/RTL/Webtoon) in **Settings** (⚙)
-4. At the last page, a banner shows the next chapter with a direct button
-
-### Chapter Context Menu
-
-Right-click any chapter in the chapter list to:
-- **Mark as Read** — marks the chapter with a visual indicator
-- **Mark as Unread** — removes the read marker
-- **Add/Remove Flag 🚩** — highlights the chapter with an orange border for custom tracking
-
-### History
-
-Go to **History** in the sidebar to see all manga you have opened. Each entry shows the cover, title, and when you last read it. Click **View** to open the details page or **[x]** to remove the entry.
-
-To wipe all history: open **Settings** (⚙) → **Clear Reading History**.
-
-### Language
-
-Switch between **English** and **Português** in the top bar. The setting persists across sessions.
-
-### Analytics
-
-Go to **Analytics** in the sidebar to see chapters read, total reading time, daily streak, status distribution, and earned achievements.
-
----
-
-## Settings
-
-Access via the ⚙ button in the sidebar.
-
-| Setting | Description |
-|---|---|
-| Language | English / Português |
-| Reading Mode | LTR / RTL / Webtoon |
-| Hide Read Chapters | Only show unread chapters |
-| Skip Duplicate Chapters | Skip chapters with the same chapter number |
-| Pan Wide Images | Horizontal scroll for double-page spreads |
-| Auto-scroll Speed | 1–5 |
-| Clear Reading History | Wipes all server-side history and all local progress |
-
----
-
-## Project Structure
+## Architecture
 
 ```
 Manghu/
-├── data/
-│   ├── sources/
-│   │   ├── mangadex.js         # MangaDex official API source
-│   │   └── mangapill.js        # MangaPill HTML scraper source
-│   ├── achievements.json       # Achievement definitions
-│   ├── icon-mapping.json       # Source icon map
-│   ├── store.json              # Runtime data — NOT committed (auto-created)
-│   ├── store.json.example      # Template for store.json structure
-│   ├── local/                  # Imported local manga (not committed)
-│   ├── tmp/                    # Upload temp dir (not committed)
-│   └── cache/                  # API response cache (not committed)
-├── public/
-│   ├── index.html              # App shell
-│   ├── styles.css              # All styles (dark/light themes)
-│   ├── app.js                  # Frontend logic
-│   └── achievement-manager.js
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── .gitignore
-├── .dockerignore
-├── server.js                   # Express API server
-└── package.json
+ server.js               thin orchestrator (entry point, ~165 lines)
+ server/
+    helpers.js          shared server-side utilities
+    store.js            in-memory store + debounced JSON persistence
+    sourceLoader.js     plugin loading, path-confinement, caching
+    middleware/
+       security.js     security headers + rate limiter
+    routes/
+        proxy.js        image proxy (/api/proxy-image)
+        repos.js        repository management
+        sources.js      source install/dispatch/popular
+        local.js        CBZ/CBR/PDF import
+        library.js      favorites, history, reading status
+        downloads.js    CBZ chapter/bulk downloads
+        reviews.js      user reviews & ratings (110)
+        lists.js        custom manga lists
+        analytics.js    reading sessions & statistics
+        achievements.js achievement unlock/query
+        mangaupdates.js MangaUpdates metadata lookup
+ public/
+    modules/            extracted, documented frontend modules
+       api.js          api() fetch helper
+       i18n.js         translations, t(), setLanguage()
+       state.js        global state object
+       navigation.js   NavigationManager class + singletons
+       utils.js        DOM helpers, formatters, theme, toast
+    app.js              main UI logic (SETTINGS onwards)
+    themes.js           community theme definitions
+    achievement-manager.js  AchievementManager class
+    customSelect.js     accessible custom select widget
+    index.html          single-page HTML shell
+    styles.css          CSS custom-property design system
+ data/
+     store.json          user data (auto-created, git-ignored)
+     achievements.json   achievement definitions
+     icon-mapping.json   Feather icon name  SVG cache
+     sources/            source plugin files (JS, git-ignored)
+```
+
+---
+
+## Backend Module Reference
+
+### `server/helpers.js`
+
+| Export | Description |
+|--------|-------------|
+| `safeId(id)` | Strips everything outside `[a-z0-9_\-./]`, max 120 chars. Used to sanitise source IDs before path operations. |
+| `safeManga(obj)` | Whitelists known keys on a manga object to prevent prototype-pollution. |
+| `sha1Short(str)` | 8-char hex SHA-1 digest. Used for cache key generation. |
+| `isSafeUrl(url)` | Returns `false` for loopback, RFC-1918, and link-local addresses (SSRF guard). |
+| `fetchJson(url, opts)` | fetch + JSON parse with a 10 s `AbortSignal` timeout. |
+| `fetchText(url, opts)` | Same as above but returns the raw response text. |
+
+### `server/store.js`
+
+Wraps `data/store.json` in an in-memory cache with a 300 ms debounced flush.
+
+| Export | Description |
+|--------|-------------|
+| `configure(storePath)` | Set the path to `store.json`. Call once before `initStore()`. |
+| `initStore()` | Load JSON from disk into memory. Creates a blank store on first run. |
+| `readStore()` | Return the current in-memory store object. |
+| `writeStore(data)` | Merge data into the store and schedule a debounced disk write. |
+| `flushStoreSync()` | Force an immediate synchronous write (called on SIGINT/SIGTERM). |
+
+### `server/sourceLoader.js`
+
+| Export | Description |
+|--------|-------------|
+| `configure(opts)` | Set `sourcesDir`, `snapSourcesDir`, `isPkg` flags. |
+| `sourcePath(id)` | Returns the absolute path for a source file, rejecting traversal sequences. |
+| `loadSourceFromFile(id)` | `require()` a source, validates the 4-function interface, returns the module. |
+| `clearSourceCache(id?)` | Invalidate the require cache for one source (or all). |
+| `autoInstallLocalSources()` | Parallel-scan `sourcesDir` and register any `.js` files as sources. |
+| `seedSourcesFromSnapshot()` | On first run inside a pkg bundle, copy bundled sources to the writable directory. |
+
+### `server/middleware/security.js`
+
+| Export | Description |
+|--------|-------------|
+| `applySecurityHeaders(app)` | Attaches security response headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Content-Security-Policy). |
+| `rateLimiter(windowMs, max)` | Sliding-window rate limiter middleware. Returns 429 with Retry-After on breach. |
+
+---
+
+## Frontend Module Reference
+
+All modules are loaded as plain scripts in global scope before `app.js`.
+
+| File | Globals exported |
+|------|-----------------|
+| `modules/api.js` | `api(path, opts)` |
+| `modules/i18n.js` | `translations`, `currentLanguage`, `t(key)`, `setLanguage(lang)`, `applyTranslations()` |
+| `modules/state.js` | `state` |
+| `modules/navigation.js` | `NavigationManager` (class), `navigationManager`, `achievementManager` |
+| `modules/utils.js` | `$(id)`, `escapeHtml(s)`, `formatTime(minutes)`, `statusLabel(status)`, `initTheme()`, `toggleTheme()`, `showToast(title, msg, type)` |
+
+Script load order in `index.html`:
+```
+customSelect.js  achievement-manager.js  themes.js
+   modules/api.js  modules/i18n.js  modules/state.js
+   modules/navigation.js  modules/utils.js  app.js
 ```
 
 ---
 
 ## API Reference
 
-### Source Content
+All endpoints are prefixed `/api/`. Rate limit: **600 requests / 10 minutes** per IP.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/source/:id/search` | Search manga. Body: `{ query, page }` |
-| `POST` | `/api/source/:id/mangaDetails` | Manga info. Body: `{ mangaId }` |
-| `POST` | `/api/source/:id/chapters` | Chapter list. Body: `{ mangaId }` |
-| `POST` | `/api/source/:id/pages` | Page images. Body: `{ chapterId }` |
-| `POST` | `/api/source/:id/trending` | Trending manga |
-| `POST` | `/api/source/:id/recentlyAdded` | Recently added manga |
-| `POST` | `/api/source/:id/latestUpdates` | Latest updated manga |
+### State & repositories
 
-> Use `local` as the source ID to access imported local manga via the same API.
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/state` | Installed sources, available sources, repo list. |
+| `POST` | `/api/repos` | Add a source repository. Body: `{ url }`. SSRF-guarded. |
+| `DELETE` | `/api/repos` | Remove a repository. Body: `{ url }`. |
 
-### Image Proxy
+### Sources
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/proxy-image?url=…` | Proxy an image URL server-side. Optional `ref` param overrides the `Referer` header. |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/sources/install` | Install a source from a repo. Body: `{ sourceId, url }`. |
+| `DELETE` | `/api/sources/:id` | Uninstall a source. |
+| `POST` | `/api/source/:id/:method` | Dispatch to a source method (`search`, `mangaDetails`, `chapters`, `pages`). 30 s timeout. |
+| `GET` | `/api/popular-all` | Aggregated popular manga across all sources. 60 s TTL cache. |
 
-### Local Manga
+### Library
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/local/list` | List all imported local manga |
-| `POST` | `/api/local/import` | Import a file. Multipart: `file` + optional `title` |
-| `POST` | `/api/local/:mangaId/cover` | Upload a cover image (JPEG). Body: raw `image/jpeg` |
-| `DELETE` | `/api/local/:mangaId` | Delete a local manga and its files |
-
-### Library & History
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/library` | Returns `{ favorites, history }` |
-| `POST` | `/api/favorites/toggle` | Add or remove from library |
-| `POST` | `/api/history/add` | Add manga to history |
-| `POST` | `/api/history/remove` | Remove a single entry from history |
-| `DELETE` | `/api/history/clear` | Wipe all history |
-| `GET` | `/api/user/status` | Get all reading statuses |
-| `POST` | `/api/user/status` | Set status for a manga |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/library` | Returns `{ favorites, history }`. |
+| `POST` | `/api/favorites/toggle` | Add or remove a manga from favorites (sanitised with `safeManga`). |
+| `POST` | `/api/history` | Append a chapter read event. |
+| `GET` | `/api/user/status` | Returns `{ readingStatus }` map. |
+| `POST` | `/api/user/status` | Set reading status. Body: `{ mangaId, sourceId, status, manga }`. |
+| `GET` | `/api/ratings` | Returns `{ ratings }` map. |
+| `POST` | `/api/ratings` | Set a rating. Body: `{ mangaId, rating }`. Rating clamped to [1, 10]. |
 
 ### Downloads
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/download/chapter` | Download a single chapter as CBZ |
-| `POST` | `/api/download/bulk` | Bulk download chapters as CBZ |
-| `POST` | `/api/mangaupdates/search` | Search MangaUpdates for chapter count data |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/download/chapter` | Download a single chapter as CBZ. |
+| `POST` | `/api/download/bulk` | Download multiple chapters as CBZ. `sourceId` validated with `safeId()`. |
 
-### Analytics & Achievements
+### Local manga
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/analytics` | Stats, distribution, sessions |
-| `POST` | `/api/analytics/session` | Record a reading session |
-| `GET` | `/api/achievements` | Get unlocked achievements |
-| `POST` | `/api/achievements/unlock` | Unlock an achievement |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/local/import` | Upload a CBZ / CBR / PDF file via multipart. |
+| `GET` | `/api/local/list` | List all imported local manga. |
+| `DELETE` | `/api/local/:id` | Delete a local manga. |
+| `POST` | `/api/source/local/:method` | Virtual local source (`mangaDetails`, `chapters`, `pages`). |
+
+### Reviews & lists
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` `POST` `DELETE` | `/api/reviews` | CRUD for user reviews. Text capped at 2 000 chars. |
+| `GET` `POST` | `/api/lists` | List all / create a custom list. |
+| `DELETE` | `/api/lists/:id` | Delete a list. |
+| `POST` `DELETE` | `/api/lists/:id/items` | Add / remove a manga from a list. |
+
+### Analytics & achievements
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/analytics` | Aggregated reading statistics. |
+| `POST` | `/api/analytics/session` | Record a reading session. Duration clamped to [0, 1 440] min. |
+| `GET` | `/api/achievements` | Returns `{ achievements }` array. |
+| `POST` | `/api/achievements/unlock` | Idempotently unlock an achievement. |
+
+### Utilities
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/proxy-image?url=&ref=` | SSRF-guarded image proxy. 24 h cache, 15 s timeout. |
+| `POST` | `/api/mangaupdates/search` | MangaUpdates metadata lookup. 10 s timeout. |
 
 ---
 
-## Adding a Custom Source
+## Source Plugin API
 
-Create `data/sources/mysource.js`:
+A source is a CommonJS module placed in `data/sources/`:
 
-```javascript
-module.exports = {
-  meta: {
-    id: "mysource",
-    name: "My Source",
-    version: "1.0.0",
-    author: "You",
-    icon: ""
-  },
+```js
+exports.meta = { id: 'my-source', name: 'My Source', baseUrl: 'https://example.com', lang: 'en' };
 
-  async search(query, page) {
-    // return { results: [{ id, title, cover, author, status, genres }], hasNextPage: bool }
-  },
-  async mangaDetails(mangaId) {
-    // return { id, title, cover, author, description, genres, status }
-  },
-  async chapters(mangaId) {
-    // return { chapters: [{ id, name, chapter, date }] }
-  },
-  async pages(chapterId) {
-    // return { pages: [{ img: "url" }] }
-  }
-};
+exports.search       = async ({ query, page = 1 }) => ({ results: [], hasNextPage: false });
+exports.mangaDetails = async ({ mangaId })         => ({ id, title, cover, chapters: [] });
+exports.chapters     = async ({ mangaId })         => ([ /* Chapter[] */ ]);
+exports.pages        = async ({ mangaId, chapterId }) => ({ pages: [ /* url strings */ ] });
 ```
 
-Restart the server — the source is auto-installed.
-
-> If your source's CDN blocks requests without a `Referer` header, route image URLs through `/api/proxy-image?url=<encoded>&ref=<your-site>`.
+All four exports are required. Source calls are wrapped in a **30 s timeout**; exceeding it returns HTTP 504.
 
 ---
 
-## Data Storage
+## Security
 
-| Location | Committed | What is stored |
-|---|---|---|
-| `data/store.json` | ✗ | Library, history, reading status, reviews, analytics, achievements |
-| `data/sources/` | ✓ | Manga source scripts |
-| `data/local/` | ✗ | Extracted pages, covers and metadata for imported files |
-| `data/cache/` | ✗ | API response cache |
-| `localStorage` | — | Settings, read chapters, flagged chapters, reading progress |
+### Fixed vulnerabilities (v1.1.0)
 
-`store.json` is created automatically on first run. See `data/store.json.example` for the expected structure.
+| Severity | Endpoint | Issue | Fix |
+|----------|----------|-------|-----|
+| High | `POST /api/repos` | No SSRF guard on supplied URL | `isSafeUrl()` check in `repos.js` |
+| High | `POST /api/favorites/toggle` | Raw `{...manga}` spread allowed arbitrary key injection | `safeManga()` whitelist in `library.js` |
+| High | `POST /api/download/bulk` | `sourceId` passed directly to `require()` path | `safeId()` validation in `downloads.js` |
+| Medium | All `/api/*` | No rate limiting | Sliding-window limiter (600 req / 10 min / IP) |
+| Medium | Source calls | No timeout  hung scraper blocks event loop | `withTimeout(call, 30_000)` in `sources.js` |
+| Low | `/api/mangaupdates/search` | No fetch timeout | `AbortSignal.timeout(10_000)` |
 
----
+### Ongoing hardening
 
-## Troubleshooting
-
-**Manga not loading**  
-Check your internet connection. Both MangaDex and MangaPill require network access.
-
-**Images not showing (MangaDex)**  
-MangaDex may be temporarily unavailable. Check the browser console for errors.
-
-**Images not showing (MangaPill)**  
-MangaPill's CDN requires a valid `Referer` header. All images are proxied through `/api/proxy-image` automatically — if images still fail, the CDN selector may have changed; check `data/sources/mangapill.js`.
-
-**PDF cover not generating**  
-PDF cover generation runs entirely in the browser via PDF.js. Make sure JavaScript is enabled and the browser supports the Canvas API. Covers are re-generated automatically on next library load for any PDF that still shows the placeholder icon.
-
-**Progress not saving**  
-Make sure `localStorage` is enabled and not blocked.
-
-**Local import fails**  
-Ensure the file is a valid CBZ, CBR, or PDF. Files up to 500 MB are supported.
-
-**Source not appearing in the selector**  
-Drop the `.js` file in `data/sources/` and restart the container (`docker compose restart`). No rebuild needed.
+- **SSRF**  `isSafeUrl()` blocks loopback, RFC-1918, and link-local ranges
+- **Prototype pollution**  review/status keys sanitised with character-class whitelists
+- **Path traversal**  `sourcePath()` rejects `..` and absolute path prefixes
+- **Content-type confusion**  image proxy validates upstream `Content-Type` against an allowlist
+- **Security headers**  `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`
 
 ---
 
-## License
+## Performance Notes
 
-MIT — free to use and modify.
+| Area | Optimisation |
+|------|-------------|
+| Store I/O | 300 ms debounced flush; all reads are in-memory |
+| Source init | `autoInstallLocalSources()` uses `Promise.all()`  parallel, not serial |
+| Popular cache | `/api/popular-all` has a 60 s TTL in-memory cache |
+| Source timeouts | 30 s hard cap prevents hung scrapers from blocking the event loop |
+| Gzip | All HTTP responses compressed by the `compression` middleware |
+| Static caching | `Cache-Control: public, max-age=7d` in production; `0` in development |
+| Image proxy | `Cache-Control: public, max-age=86400` (24 h) |
+
+---
+
+## Platform Support
+
+| Platform | Method | Notes |
+|----------|--------|-------|
+| **Windows** | `Manghu.bat` (Docker) or `Manghu-win.exe` | Primary development target |
+| **Linux** | `manghu.sh` (Docker) or `Manghu-linux` exe | Ubuntu 22.04 tested |
+| **macOS** | `manghu.sh` (Docker) or `Manghu-mac` exe | `open` used for browser launch |
+| **Android (Termux)** | `node server.js` | `pkg install nodejs` in Termux; no auto browser open |
+| **Docker** | `docker compose up -d --build` in `docker/` | Data and public dirs mounted as volumes |
+
+**Android (Termux) setup:**
+```bash
+pkg update && pkg install nodejs git
+git clone <repo> Manghu && cd Manghu
+npm install
+node server.js &
+# Open http://localhost:3000 in your mobile browser
+```
+
+---
+
+## Build Instructions
+
+**Prerequisites:** Node.js  20, `npm install`
+
+```bash
+npm run build:win    #  dist/Manghu-win.exe
+npm run build:linux  #  dist/Manghu-linux
+npm run build:mac    #  dist/Manghu-mac
+npm run build:all    # all three
+```
+
+The `pkg` configuration bundles `public/**/*`, `server/**/*.js`, `data/achievements.json`, `data/icon-mapping.json`, and the WASM RAR extractor. On first launch the executable seeds `data/sources/` from the bundle so users can customise sources without rebuilding.
+
+---
+
+## Docker
+
+```yaml
+# docker/docker-compose.yml
+services:
+  manghu:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../data:/app/data      # user data persists across rebuilds
+      - ../public:/app/public  # live CSS/JS changes without rebuild
+    restart: unless-stopped
+```
+
+Editing `public/` files takes effect immediately without rebuilding the image. To apply server-side code changes:
+
+```bash
+cd docker && docker compose up -d --build
+```
+
+---
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | HTTP listen port |
+| `NODE_ENV` | `development` | Set to `production` for long-lived static caching |
+
+User data lives in `data/store.json`. Back up this file to preserve your library, history, and achievements.

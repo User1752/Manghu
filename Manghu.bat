@@ -4,145 +4,227 @@ title Manghu
 chcp 65001 >nul 2>&1
 cls
 
-::  ANSI colors (Windows 10+ virtual terminal) 
+::  ANSI colour palette 
 for /F "delims=#" %%E in ('"prompt #$E# & for %%e in (1) do rem"') do set "ESC=%%E"
 set "R=!ESC![0m"
 set "BOLD=!ESC![1m"
 set "DIM=!ESC![2m"
 set "PUR=!ESC![35m"
+set "BPUR=!ESC![95m"
 set "CYN=!ESC![36m"
+set "BCYN=!ESC![96m"
 set "GRN=!ESC![32m"
+set "BGRN=!ESC![92m"
 set "RED=!ESC![31m"
+set "BRED=!ESC![91m"
 set "YLW=!ESC![33m"
+set "BYLW=!ESC![93m"
 set "WHT=!ESC![97m"
+set "GRY=!ESC![90m"
 
-::  Carriage return for in-place spinner 
+::  Carriage-return trick for in-place animation 
 for /f %%a in ('copy /z "%~f0" nul') do set "CR=%%a"
 
 cd /d "%~dp0"
 
-::  1. Check Docker is installed 
+::  1. Splash 
+call :banner
+
+::  2. Check Docker is installed 
 where docker >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    call :banner
-    call :err "Docker not found" "Get it at https://www.docker.com/products/docker-desktop"
+    call :err "Docker not found" "Install Docker Desktop  https://docs.docker.com/get-docker/"
     pause & exit /b 1
 )
 
-::  2. Check Docker daemon 
+::  3. Ensure Docker daemon is running 
 docker info >nul 2>nul
 if %ERRORLEVEL% EQU 0 goto :boot
 
-call :banner
-echo   !YLW![ ! ]!R!  Docker Desktop is not running -- launching it...
+echo   !BYLW!  [!R! ! !BYLW!]!R!  Docker Desktop is not running -- launching it...
 echo.
-start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" 2>nul
 call :spin_docker
 echo.
+echo.
 
-::  3. Start server 
+::  4. Build and launch 
 :boot
 cd docker
-call :launch
-goto :menu
-
-:: 
-:launch
-cls
-call :banner
-echo   !CYN![ .. ]!R!  Building image and starting container...
-echo.
-docker compose up -d --build
-if %ERRORLEVEL% NEQ 0 (
+call :do_build
+if !BUILD_OK! NEQ 0 (
+    call :err "Failed to start" "Is Docker Desktop running?  See log below."
     echo.
-    call :err "Failed to start" "Is Docker Desktop running?"
+    echo   !GRY!-- docker log ---------------------------------------------------!R!
+    type "%TEMP%\manghu_build.log" 2>nul
+    echo   !GRY!-----------------------------------------------------------------!R!
+    echo.
     pause & exit /b 1
 )
 echo.
 call :status_box
 start "" "http://localhost:3000"
-goto :eof
 
-:: 
+::  5. Interactive menu 
 :menu
-call :menu_prompt
-if %ERRORLEVEL% EQU 1 goto :refresh
-if %ERRORLEVEL% EQU 2 goto :quit
+echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Rebuild ^& refresh                        !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!O!R!  !WHT!Open in browser                          !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit ^& stop server                       !GRY!^|!R!
+echo   !GRY!  +-----------------------------------------------+!R!
+echo.
+set "CHOICE="
+set /p CHOICE="   >  "
+if /i "!CHOICE!"=="r" goto :do_refresh
+if /i "!CHOICE!"=="o" ( start "" "http://localhost:3000" & goto :menu )
+if /i "!CHOICE!"=="q" goto :do_quit
 goto :menu
 
-:menu_prompt
-echo   !DIM!  ------------------------------------------!R!
-echo   !BOLD!!WHT!  [ R ]!R!  Rebuild ^& refresh
-echo   !BOLD!!WHT!  [ Q ]!R!  Quit ^& stop server
-echo.
-choice /c RQ /n /m "  > "
-goto :eof
-
-:: 
-:refresh
-cls
+::  Rebuild 
+:do_refresh
 call :banner
-echo   !CYN![ .. ]!R!  Rebuilding...
+echo   !BCYN!  [ .. ]!R!  Rebuilding...
 echo.
-docker compose up -d --build
-if %ERRORLEVEL% NEQ 0 (
+call :do_build
+if !BUILD_OK! NEQ 0 (
+    call :err "Rebuild failed" "Check the log below."
     echo.
-    call :err "Rebuild failed" "Check the output above for details"
-    goto :menu
+    type "%TEMP%\manghu_build.log" 2>nul
+    echo.
+) else (
+    echo   !BGRN!  [ OK ]!R!  !BOLD!Refreshed!R!  --  !WHT!http://localhost:3000!R!
+    echo.
 )
-echo.
-echo   !GRN![ OK ]!R!  Refreshed -- http://localhost:3000
-echo.
 goto :menu
 
-:: 
-:quit
+::  Quit 
+:do_quit
 echo.
-echo   !CYN![ .. ]!R!  Stopping Manghu...
-docker compose down
+call :anim_quit
 echo.
-echo   !GRN![ OK ]!R!  Server stopped. Goodbye!
+echo   !BGRN!  [ OK ]!R!  Server stopped. !DIM!Goodbye!!R!
 echo.
 timeout /t 2 /nobreak >nul
 exit /b 0
 
-:: 
+:: =============================================================================
+:: SUBROUTINES
+:: =============================================================================
+
+::  Banner (big logo in box) 
 :banner
 cls
 echo.
-echo   !PUR!!BOLD!  M  A  N  G  H  U!R!
-echo   !DIM!  ---------------------!R!
-echo   !DIM!  Manga Reader  ^|  Docker  ^|  localhost:3000!R!
+echo   !GRY!  +=======================================================+!R!
+echo   !GRY!  ^|!R!                                                                         !GRY!^|!R!
+echo   !GRY!  ^|!R!    !BOLD!!BPUR! ^|V^|   /\   ^|\^|   (^~   ^|-^|   ^| ^|!R!             !GRY!^|!R!
+echo   !GRY!  ^|!R!    !BOLD!!PUR! ^|  ^|  /--\  ^| \^|  (_    ^|_^|   ^| ^|!R!             !GRY!^|!R!
+echo   !GRY!  ^|!R!    !DIM!!PUR! ^|  ^| /    \ ^|  \^|   _^)  ^| ^|  \__/!R!               !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                                         !GRY!^|!R!
+echo   !GRY!  ^|!R!    !DIM!Manga Reader  .  Docker  .  localhost:3000!R!                   !GRY!^|!R!
+echo   !GRY!  +=======================================================+!R!
 echo.
 goto :eof
 
-:: 
+::  Status box 
 :status_box
-echo   !GRN!  [ OK ]  Manghu is running!R!
-echo.
-echo         !WHT!http://localhost:3000!R!
+echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!Manghu is running!R!                     !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                 !GRY!^|!R!
+echo   !GRY!  ^|!R!       !BOLD!!WHT!http://localhost:3000!R!                   !GRY!^|!R!
+echo   !GRY!  +-----------------------------------------------+!R!
 echo.
 goto :eof
 
-:: 
+::  Error box 
 :err
-echo   !RED!  [ ERR ]!R!  %~1
-if not "%~2"=="" echo   !DIM!           %~2!R!
+echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  ^|!R!    !BRED![ ERR ]!R!  !BOLD!%~1!R!
+if not "%~2"=="" echo   !GRY!  ^|!R!    !DIM!          %~2!R!
+echo   !GRY!  +-----------------------------------------------+!R!
 echo.
 goto :eof
 
-:: 
+::  Background build with animated progress bar 
+:do_build
+set "LOGF=%TEMP%\manghu_build.log"
+set "DONEF=%TEMP%\manghu_build.done"
+set "HLPF=%TEMP%\manghu_build_helper.bat"
+2>nul del "!DONEF!" "!LOGF!" "!HLPF!"
+
+:: Write helper script (runs in bg, writes result flag when done)
+>>"%HLPF%" (
+    echo @echo off
+    echo docker compose up -d --build ^>"!LOGF!" 2^>^&1
+    echo if errorlevel 1 ^(echo FAIL^>"!DONEF!"^) else ^(echo OK^>"!DONEF!"^)
+)
+start "" /b "!HLPF!"
+
+:: Animated progress bar while docker runs in background
+set "tick=0"
+set "BAR=30"
+:_bploop
+if exist "!DONEF!" goto :_bpdone
+set /a "tick+=1"
+set /a "f=tick %% 8"
+if !f!==0 set "SP=>"
+if !f!==1 set "SP=>"
+if !f!==2 set "SP=-"
+if !f!==3 set "SP=-"
+if !f!==4 set "SP=<"
+if !f!==5 set "SP=<"
+if !f!==6 set "SP=-"
+if !f!==7 set "SP=-"
+set /a "fill=tick %% (BAR+1)"
+set "bar="
+for /l %%i in (1,1,!fill!) do set "bar=!bar!#"
+set /a "emp_cnt=BAR-fill"
+set "emp="
+for /l %%i in (1,1,!emp_cnt!) do set "emp=!emp!."
+<nul set /p ="   !BCYN![!SP!]!R!  Building   !GRY![!BCYN!!bar!!GRY!!emp!]!R!  !DIM!!tick!s!R!!CR!"
+timeout /t 1 /nobreak >nul
+goto :_bploop
+
+:_bpdone
+set /p BUILD_RESULT=<"!DONEF!"
+2>nul del "!DONEF!" "!HLPF!"
+<nul set /p ="                                                                    !CR!"
+set "BUILD_OK=0"
+if "!BUILD_RESULT!"=="FAIL" set "BUILD_OK=1"
+if !BUILD_OK! EQU 0 echo   !BGRN!  [ OK ]!R!  Build complete!
+goto :eof
+
+::  Docker daemon spinner 
 :spin_docker
-set "si=0"
+set "sdi=0"
 :_sdloop
-set /a "f=si%%4"
-if !f!==0 (<nul set /p ="   !CYN![ / ]!R!  Waiting for Docker...!CR!")
-if !f!==1 (<nul set /p ="   !CYN![ - ]!R!  Waiting for Docker...!CR!")
-if !f!==2 (<nul set /p ="   !CYN![ \ ]!R!  Waiting for Docker...!CR!")
-if !f!==3 (<nul set /p ="   !CYN![ | ]!R!  Waiting for Docker...!CR!")
-set /a si+=1
+set /a "f=sdi %% 4"
+if !f!==0 (<nul set /p ="   !BCYN![ / ]!R!  Waiting for Docker daemon...  !CR!")
+if !f!==1 (<nul set /p ="   !BCYN![ - ]!R!  Waiting for Docker daemon...  !CR!")
+if !f!==2 (<nul set /p ="   !BCYN![ \ ]!R!  Waiting for Docker daemon...  !CR!")
+if !f!==3 (<nul set /p ="   !BCYN![ | ]!R!  Waiting for Docker daemon...  !CR!")
+set /a sdi+=1
 timeout /t 1 /nobreak >nul
 docker info >nul 2>nul
 if %ERRORLEVEL% NEQ 0 goto :_sdloop
-<nul set /p ="   !GRN![ OK ]!R!  Docker is ready.          "
+<nul set /p ="   !BGRN![ OK ]!R!  Docker is ready.                  "
+echo.
+goto :eof
+
+::  Quit animation 
+:anim_quit
+set "qi=0"
+:_qloop
+if !qi! GEQ 3 goto :_qdone
+set /a "f=qi %% 4"
+if !f!==0 (<nul set /p ="   !BCYN![ / ]!R!  Stopping Manghu...  !CR!")
+if !f!==1 (<nul set /p ="   !BCYN![ - ]!R!  Stopping Manghu...  !CR!")
+if !f!==2 (<nul set /p ="   !BCYN![ \ ]!R!  Stopping Manghu...  !CR!")
+if !f!==3 (<nul set /p ="   !BCYN![ | ]!R!  Stopping Manghu...  !CR!")
+timeout /t 1 /nobreak >nul
+set /a qi+=1
+goto :_qloop
+:_qdone
+docker compose down >nul 2>&1
+<nul set /p ="                                        !CR!"
 goto :eof

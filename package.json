@@ -1,20 +1,26 @@
 {
   "name": "manghu",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "server.js",
   "bin": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "build:exe": "pkg . --targets node20-win-x64 --output dist/Manghu.exe --compress GZip"
+    "start:prod": "NODE_ENV=production node server.js",
+    "build:win":   "pkg . --targets node20-win-x64   --output dist/Manghu-win.exe   --compress GZip",
+    "build:linux": "pkg . --targets node20-linux-x64 --output dist/Manghu-linux     --compress GZip",
+    "build:mac":   "pkg . --targets node20-macos-x64 --output dist/Manghu-mac       --compress GZip",
+    "build:all":   "npm run build:win && npm run build:linux && npm run build:mac",
+    "build:exe":   "npm run build:win"
   },
   "pkg": {
     "assets": [
       "public/**/*",
       "data/achievements.json",
       "data/icon-mapping.json",
-      "node_modules/node-unrar-js/esm/**/*"
+      "node_modules/node-unrar-js/esm/**/*",
+      "server/**/*.js"
     ],
     "scripts": [
       "data/sources/**/*.js"
