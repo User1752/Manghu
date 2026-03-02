@@ -26,7 +26,7 @@
           "id": "reader_10",
           "name": "Bookworm",
           "description": "Read 10 chapters",
-          "icon": "book-stack",
+          "icon": "book-open",
           "rarity": "common",
           "points": 25,
           "condition": {
@@ -40,7 +40,7 @@
           "id": "reader_100",
           "name": "Manga Addict",
           "description": "Read 100 chapters",
-          "icon": "trophy",
+          "icon": "award",
           "rarity": "rare",
           "points": 100,
           "condition": {
@@ -68,7 +68,7 @@
           "id": "reader_1000",
           "name": "Unstoppable",
           "description": "Read 1000 chapters",
-          "icon": "crown",
+          "icon": "star",
           "rarity": "legendary",
           "points": 1000,
           "condition": {
@@ -118,7 +118,7 @@
           "id": "fav_50",
           "name": "Mega Reader",
           "description": "Have 50 manga in your library",
-          "icon": "boxes",
+          "icon": "package",
           "rarity": "rare",
           "points": 200,
           "condition": {
@@ -168,7 +168,7 @@
           "id": "completed_5",
           "name": "Veteran Reader",
           "description": "Complete 5 manga",
-          "icon": "medal",
+          "icon": "award",
           "rarity": "rare",
           "points": 100,
           "condition": {
@@ -196,7 +196,7 @@
           "id": "completed_25",
           "name": "Master Reader",
           "description": "Complete 25 manga",
-          "icon": "crown",
+          "icon": "star",
           "rarity": "epic",
           "points": 500,
           "condition": {
@@ -232,7 +232,7 @@
           "id": "marathon",
           "name": "Marathon Reader",
           "description": "Spend 5 hours reading total",
-          "icon": "runner",
+          "icon": "activity",
           "rarity": "rare",
           "points": 200,
           "condition": {
@@ -246,7 +246,7 @@
           "id": "dedicated",
           "name": "Dedicated",
           "description": "Spend 24 hours reading total",
-          "icon": "fire",
+          "icon": "zap",
           "rarity": "epic",
           "points": 1000,
           "condition": {
@@ -260,7 +260,7 @@
           "id": "devoted",
           "name": "Devoted",
           "description": "Spend 100 hours reading total",
-          "icon": "infinity",
+          "icon": "maximize",
           "rarity": "legendary",
           "points": 5000,
           "condition": {
@@ -324,7 +324,7 @@
           "id": "streak_100",
           "name": "Immortal",
           "description": "Read 100 days in a row",
-          "icon": "infinity",
+          "icon": "maximize",
           "rarity": "legendary",
           "points": 2000,
           "condition": {
@@ -338,7 +338,7 @@
           "id": "streak_365",
           "name": "Eternal",
           "description": "Read every day for a full year",
-          "icon": "sparkles",
+          "icon": "star",
           "rarity": "legendary",
           "points": 10000,
           "condition": {
@@ -414,7 +414,7 @@
           "id": "early_bird",
           "name": "Early Bird",
           "description": "Read a chapter within 1 hour of its release",
-          "icon": "sunrise",
+          "icon": "sun",
           "rarity": "epic",
           "points": 150,
           "condition": {

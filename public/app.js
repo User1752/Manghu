@@ -3499,6 +3499,15 @@ function showSettings() {
         <div class="setting-group">
           <button class="btn secondary" id="clearReadBtn">Clear Reading History</button>
         </div>
+        <div class="settings-divider"></div>
+        <h3 class="settings-subsection">Commands</h3>
+        <div class="setting-group">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="cheatInput" class="input" placeholder="Enter command…" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;font-family:monospace">
+            <button class="btn primary" id="cheatRunBtn">Run</button>
+          </div>
+          <p class="setting-description" style="margin-top:6px">Available: <code>cls</code> — reset all AP &amp; achievements &nbsp;·&nbsp; <code>godmode</code> — add 500 AP</p>
+        </div>
       </div>
     </div>
   `;
@@ -3535,6 +3544,33 @@ function showSettings() {
     saveSettings();
     if (state.currentChapter) renderPage();
   };
+  function runCheatCommand(cmd) {
+    switch ((cmd || '').trim().toLowerCase()) {
+      case 'cls':
+        achievementManager.reset();
+        localStorage.setItem('manghu_ap_bonus', '0');
+        localStorage.setItem('manghu_ap_spent', '0');
+        updateApBadge();
+        showToast('Reset complete', 'All AP and achievements cleared.', 'info');
+        break;
+      case 'godmode':
+        addBonusAP(500);
+        updateApBadge();
+        showToast('Godmode activated', '+500 AP added to your wallet.', 'success');
+        break;
+      default:
+        showToast('Unknown command', `"${cmd}" is not a valid command.`, 'warning');
+    }
+  }
+  $('cheatRunBtn').onclick = () => {
+    const inp = $('cheatInput');
+    runCheatCommand(inp.value);
+    inp.value = '';
+  };
+  $('cheatInput').onkeydown = (e) => {
+    if (e.key === 'Enter') { runCheatCommand($('cheatInput').value); $('cheatInput').value = ''; }
+  };
+
   $("clearReadBtn").onclick = async () => {
     if (confirm("Clear all reading history?")) {
       try { await fetch("/api/history/clear", { method: "DELETE" }); } catch (_) {}
@@ -3765,10 +3801,19 @@ function summonShenlong() {
 // ACHIEVEMENTS PAGE VIEW
 // ============================================================================
 
-function renderAchievementsView() {
+async function renderAchievementsView() {
   const content = document.getElementById('achPageContent');
   if (!content) return;
   updateApBadge();
+
+  // If definitions haven't loaded yet (e.g., first navigation hit before async
+  // startup finished, or the initial fetch failed), try once more.
+  if (achievementManager.categories.length === 0) {
+    try {
+      content.innerHTML = '<div class="muted">Loading achievements…</div>';
+      await achievementManager.loadAchievements();
+    } catch (_) { /* fall through — will show "no achievements" */ }
+  }
 
   // Secret Dragon Ball easter egg: collect all 7 dragon balls → Shenlong grants 50 AP
   const db = document.getElementById('achDragonBall');
@@ -4319,6 +4364,11 @@ const CUSTOM_PRESETS_KEY = 'manghu_custom_presets';
 
 const CUSTOM_ACTIVE_KEY  = 'manghu_active_custom';
 
+// Shared callback so initColorPicker can trigger livePreview
+var _cpLivePreviewCb = null;
+// Tracks whether we are currently editing an existing preset
+var _editingPresetId = null;
+
 
 
 function getCustomPresets() {
@@ -4349,6 +4399,29 @@ function setActiveCustom(cfg) {
 
 
 
+// ── Palette colour helpers ───────────────────────────────────────────────────
+function _hexToHsv(hex) {
+  var r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+  var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min, h=0, s=max===0?0:d/max, v=max;
+  if(max!==min){switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h*=60;}
+  return {h:h,s:s,v:v};
+}
+function _hsvToHex(h,s,v){
+  h=((h%360)+360)%360;
+  var i=Math.floor(h/60)%6,f=h/60-Math.floor(h/60);
+  var p=v*(1-s),q=v*(1-f*s),t=v*(1-(1-f)*s);
+  var rgb=[[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i];
+  return '#'+rgb.map(function(x){return Math.round(Math.max(0,Math.min(1,x))*255).toString(16).padStart(2,'0');}).join('');
+}
+function _derivePalette(hex){
+  var c=_hexToHsv(hex);
+  return {
+    primary: hex,
+    dark:  _hsvToHex(c.h, Math.min(1,c.s*1.05), c.v*0.62),
+    light: _hsvToHex(c.h, Math.max(0,c.s*0.55), Math.min(1,c.v+0.18))
+  };
+}
+
 function applyCustomization(cfg) {
 
   ['custom-char', 'custom-corner', 'custom-bg-layer'].forEach(function(id) {
@@ -4362,8 +4435,14 @@ function applyCustomization(cfg) {
     styleEl.id = 'custom-live-style';
     document.head.appendChild(styleEl);
   }
+  var palStyleEl = document.getElementById('custom-palette-style');
+  if (!palStyleEl) {
+    palStyleEl = document.createElement('style');
+    palStyleEl.id = 'custom-palette-style';
+    document.head.appendChild(palStyleEl);
+  }
 
-  if (!cfg) { styleEl.textContent = ''; return; }
+  if (!cfg) { styleEl.textContent = ''; palStyleEl.textContent = ''; return; }
 
   var bgUrl      = cfg.bgUrl      || '';
   var bgDim      = cfg.bgDim      != null ? cfg.bgDim      : 0;
@@ -4407,10 +4486,15 @@ function applyCustomization(cfg) {
     }
   }
 
+  // Both overlays at left:0 (left edge of screen).
+  // z-index must exceed the sidebar (100) so they are visible.
+  // pointer-events:none is already set, so sidebar/content clicks pass through.
+  // Left Column (z-index:102) appears on top of Corner Card (z-index:101).
+
   if (charUrl) {
     _mkOverlay(
       'custom-char',
-      'position:fixed;bottom:0;left:0;width:240px;height:100vh;pointer-events:none;overflow:hidden;z-index:10;-webkit-mask-image:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 100%);mask-image:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 100%)',
+      'position:fixed;bottom:0;left:0;width:240px;height:100vh;pointer-events:none;overflow:hidden;z-index:102;-webkit-mask-image:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 100%);mask-image:linear-gradient(to top,rgba(0,0,0,.8) 0%,transparent 100%)',
       'position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:90vh;width:auto;object-fit:contain',
       (100 - charDim) / 100, charUrl, 1 - charDark / 100
     );
@@ -4419,11 +4503,26 @@ function applyCustomization(cfg) {
   if (cornerUrl) {
     _mkOverlay(
       'custom-corner',
-      'position:fixed;bottom:0;left:0;width:240px;height:210px;border-radius:0 12px 0 0;pointer-events:none;overflow:hidden;z-index:10;background:rgba(0,0,0,0.18);-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 42%);mask-image:linear-gradient(to bottom,transparent 0%,black 42%)',
+      'position:fixed;bottom:0;left:0;width:240px;height:210px;border-radius:0 12px 0 0;pointer-events:none;overflow:hidden;z-index:101;background:rgba(0,0,0,0.18);-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 42%);mask-image:linear-gradient(to bottom,transparent 0%,black 42%)',
       'position:absolute;bottom:0;left:0;width:100%;height:100%;object-fit:cover',
       (100 - cornerDim) / 100, cornerUrl, 1 - cornerDark / 100
     );
   }
+
+  // Apply custom palette colours directly on the root element as inline style —
+  // inline styles have higher priority than any stylesheet rule (including active themes).
+  var paletteColor = cfg.paletteColor || '';
+  if (paletteColor && /^#[0-9a-f]{6}$/i.test(paletteColor)) {
+    var pal = _derivePalette(paletteColor);
+    document.documentElement.style.setProperty('--primary',       pal.primary);
+    document.documentElement.style.setProperty('--primary-dark',  pal.dark);
+    document.documentElement.style.setProperty('--primary-light', pal.light);
+  } else {
+    document.documentElement.style.removeProperty('--primary');
+    document.documentElement.style.removeProperty('--primary-dark');
+    document.documentElement.style.removeProperty('--primary-light');
+  }
+  palStyleEl.textContent = '';
 
 }
 
@@ -4448,6 +4547,8 @@ function renderCustomizeView() {
           '<div class="custom-preset-actions">' +
 
             '<button class="btn secondary" onclick="applyCustomPreset(\'' + p.id + '\')">Apply</button>' +
+
+            '<button class="btn secondary" onclick="editCustomPreset(\'' + p.id + '\')">&#9998; Edit</button>' +
 
             '<button class="btn danger" onclick="deleteCustomPreset(\'' + p.id + '\')">Remove</button>' +
 
@@ -4567,6 +4668,21 @@ function renderCustomizeView() {
           '<input id="customCornerDim" class="customize-slider" type="range" min="0" max="95" value="' + cod + '">' +
         '</div>' +
 
+        '<div class="customize-card palette-card">' +
+          '<div class="customize-card-icon">&#127912;</div>' +
+          '<h3 class="customize-card-title">Colour Palette</h3>' +
+          '<p class="customize-card-desc">Accent colours used across the interface</p>' +
+          '<canvas id="cpSB" class="cp-sb" width="260" height="130"></canvas>' +
+          '<canvas id="cpHue" class="cp-hue" width="260" height="14"></canvas>' +
+          '<div class="cp-swatches">' +
+            '<div class="cp-swatch-group"><div id="cpSwPrimary" class="cp-swatch"></div><span class="customize-label">Primary</span></div>' +
+            '<div class="cp-swatch-group"><div id="cpSwDark" class="cp-swatch"></div><span class="customize-label">Dark</span></div>' +
+            '<div class="cp-swatch-group"><div id="cpSwLight" class="cp-swatch"></div><span class="customize-label">Light</span></div>' +
+          '</div>' +
+          '<label class="customize-label">Hex</label>' +
+          '<input id="cpHexInput" class="input customize-input" type="text" placeholder="#913FE2" maxlength="7" value="' + escapeHtml(active.paletteColor||'') + '">' +
+        '</div>' +
+
       '</div>' +
       '<div class="customize-save-bar">' +
 
@@ -4575,6 +4691,8 @@ function renderCustomizeView() {
         '<button class="btn primary" id="customSaveBtn">&#128190; Save Preset</button>' +
 
         '<button class="btn secondary" id="customApplyBtn">&#9654; Apply Now</button>' +
+
+        '<button class="btn secondary" id="customEditPresetsBtn">&#9998; Edit Presets</button>' +
 
       '</div>' +
 
@@ -4603,6 +4721,7 @@ function renderCustomizeView() {
     var cornerUrl  = document.getElementById('customCornerUrl').value.trim();
     var cornerDark = +document.getElementById('customCornerDark').value;
     var cornerDim  = +document.getElementById('customCornerDim').value;
+    var paletteColor = (document.getElementById('cpHexInput') ? document.getElementById('cpHexInput').value.trim() : '') || '';
 
     document.getElementById('customBgDimVal').textContent      = bgDim;
     document.getElementById('customBgOpacVal').textContent     = bgOpac;
@@ -4615,12 +4734,27 @@ function renderCustomizeView() {
 
     var p = function(n) { return document.getElementById(n); };
     p('previewBg').style.background     = bgUrl     ? "linear-gradient(rgba(0,0,0," + (bgDim/100) + "),rgba(0,0,0," + (bgDim/100) + ")),url('" + bgUrl + "') center/cover" : '';
-    p('previewChar').style.background   = charUrl   ? "url('" + charUrl + "') center top/contain no-repeat" : '';
-    p('previewHeader').style.background = headerUrl ? "linear-gradient(rgba(0,0,0," + (headerDim/100) + "),rgba(0,0,0," + (headerDim/100) + ")),url('" + headerUrl + "') center/cover" : '';
-    p('previewCorner').style.background = cornerUrl ? "url('" + cornerUrl + "') center/cover no-repeat" : '';
 
-    return { bgUrl: bgUrl, bgDim: bgDim, bgOpac: bgOpac, charUrl: charUrl, charDark: charDark, charDim: charDim, headerUrl: headerUrl, headerDim: headerDim, headerOpac: headerOpac, cornerUrl: cornerUrl, cornerDark: cornerDark, cornerDim: cornerDim };
+    // Left Column — apply darkness (brightness filter) and transparency (opacity)
+    var charPrev = p('previewChar');
+    charPrev.style.background = charUrl ? "url('" + charUrl + "') center top/contain no-repeat" : '';
+    charPrev.style.opacity    = charUrl ? String((100 - charDim)  / 100) : '';
+    charPrev.style.filter     = charUrl ? 'brightness(' + (1 - charDark / 100) + ')' : '';
+
+    p('previewHeader').style.background = headerUrl ? "linear-gradient(rgba(0,0,0," + (headerDim/100) + "),rgba(0,0,0," + (headerDim/100) + ")),url('" + headerUrl + "') center/cover" : '';
+
+    // Corner Card — apply darkness (brightness filter) and transparency (opacity)
+    var cornerPrev = p('previewCorner');
+    cornerPrev.style.background = cornerUrl ? "url('" + cornerUrl + "') center/cover no-repeat" : '';
+    cornerPrev.style.opacity    = cornerUrl ? String((100 - cornerDim)  / 100) : '';
+    cornerPrev.style.filter     = cornerUrl ? 'brightness(' + (1 - cornerDark / 100) + ')' : '';
+
+    return { bgUrl: bgUrl, bgDim: bgDim, bgOpac: bgOpac, charUrl: charUrl, charDark: charDark, charDim: charDim, headerUrl: headerUrl, headerDim: headerDim, headerOpac: headerOpac, cornerUrl: cornerUrl, cornerDark: cornerDark, cornerDim: cornerDim, paletteColor: paletteColor };
   }
+
+  // Register live-preview callback so initColorPicker can trigger it
+  _cpLivePreviewCb = livePreview;
+  _editingPresetId = null;
 
 
 
@@ -4631,6 +4765,8 @@ function renderCustomizeView() {
     if (el) el.addEventListener('input', livePreview);
 
   });
+
+  initColorPicker();
 
 
 
@@ -4656,7 +4792,15 @@ function renderCustomizeView() {
 
     var list = getCustomPresets();
 
-    list.push(Object.assign({ id: 'custom-' + Date.now(), name: name }, cfg));
+    if (_editingPresetId) {
+      // Update existing preset in-place
+      list = list.map(function(item) {
+        return item.id === _editingPresetId ? Object.assign({}, item, cfg, { name: name }) : item;
+      });
+      _editingPresetId = null;
+    } else {
+      list.push(Object.assign({ id: 'custom-' + Date.now(), name: name }, cfg));
+    }
 
     saveCustomPresets(list);
 
@@ -4668,6 +4812,11 @@ function renderCustomizeView() {
 
     renderCustomizeView();
 
+  };
+
+  document.getElementById('customEditPresetsBtn').onclick = function() {
+    var section = document.querySelector('.customize-presets-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
 
@@ -4687,6 +4836,122 @@ function renderCustomizeView() {
 }
 
 
+
+// ── Canvas colour picker ─────────────────────────────────────────────────────
+function initColorPicker() {
+  var sbCv  = document.getElementById('cpSB');
+  var hueCv = document.getElementById('cpHue');
+  var hexIn = document.getElementById('cpHexInput');
+  if (!sbCv || !hueCv || !hexIn) return;
+
+  // Fit canvases to actual rendered width
+  var W = sbCv.parentElement.clientWidth - 2;
+  if (W > 40) { sbCv.width = W; hueCv.width = W; }
+
+  var sbCtx  = sbCv.getContext('2d');
+  var hueCtx = hueCv.getContext('2d');
+  var S = { h: 270, s: 0.68, v: 0.88 }; // default purple
+
+  // Load saved colour
+  var saved = hexIn.value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(saved)) {
+    var hsv = _hexToHsv(saved);
+    S.h = hsv.h; S.s = hsv.s; S.v = hsv.v;
+  }
+
+  function drawHue() {
+    var g = hueCtx.createLinearGradient(0,0,hueCv.width,0);
+    for (var i=0;i<=1;i+=1/36) g.addColorStop(i,'hsl('+(i*360)+',100%,50%)');
+    hueCtx.fillStyle = g;
+    hueCtx.fillRect(0,0,hueCv.width,hueCv.height);
+    var tx = Math.max(7, Math.min(hueCv.width-7, (S.h/360)*hueCv.width));
+    hueCtx.beginPath();
+    hueCtx.arc(tx, hueCv.height/2, Math.max(5, hueCv.height/2-1), 0, Math.PI*2);
+    hueCtx.strokeStyle='#fff'; hueCtx.lineWidth=2; hueCtx.stroke();
+  }
+
+  function drawSB() {
+    var gH = sbCtx.createLinearGradient(0,0,sbCv.width,0);
+    gH.addColorStop(0,'#fff');
+    gH.addColorStop(1,'hsl('+S.h+',100%,50%)');
+    sbCtx.fillStyle = gH; sbCtx.fillRect(0,0,sbCv.width,sbCv.height);
+    var gV = sbCtx.createLinearGradient(0,0,0,sbCv.height);
+    gV.addColorStop(0,'rgba(0,0,0,0)');
+    gV.addColorStop(1,'rgba(0,0,0,1)');
+    sbCtx.fillStyle = gV; sbCtx.fillRect(0,0,sbCv.width,sbCv.height);
+    var cx = S.s * sbCv.width;
+    var cy = (1-S.v) * sbCv.height;
+    sbCtx.beginPath();
+    sbCtx.arc(cx, cy, 7, 0, Math.PI*2);
+    sbCtx.strokeStyle='#fff'; sbCtx.lineWidth=2; sbCtx.stroke();
+  }
+
+  function commit() {
+    var hex = _hsvToHex(S.h, S.s, S.v);
+    hexIn.value = hex;
+    var pal = _derivePalette(hex);
+    var ps=document.getElementById('cpSwPrimary'), pd=document.getElementById('cpSwDark'), pl=document.getElementById('cpSwLight');
+    if(ps) ps.style.background=pal.primary;
+    if(pd) pd.style.background=pal.dark;
+    if(pl) pl.style.background=pal.light;
+    // Apply inline CSS vars directly on <html> — overrides any stylesheet/theme.
+    document.documentElement.style.setProperty('--primary',       pal.primary);
+    document.documentElement.style.setProperty('--primary-dark',  pal.dark);
+    document.documentElement.style.setProperty('--primary-light', pal.light);
+    // Persist palette colour into the active customisation immediately so
+    // a page reload restores the chosen colour even without clicking Apply.
+    var _cur = getActiveCustom() || {};
+    _cur.paletteColor = hex;
+    setActiveCustom(_cur);
+    // Sync the rest of the live preview (sliders, other cards)
+    if (typeof _cpLivePreviewCb === 'function') _cpLivePreviewCb();
+  }
+
+  function clamp(x,lo,hi){return Math.max(lo,Math.min(hi,x));}
+
+  // Hue slider
+  var hDrag=false;
+  function onHue(e){
+    e.preventDefault();
+    var rect=hueCv.getBoundingClientRect();
+    var cx=e.touches?e.touches[0].clientX:e.clientX;
+    S.h = clamp((cx-rect.left)/rect.width,0,1)*360;
+    drawHue(); drawSB(); commit();
+  }
+  hueCv.addEventListener('mousedown',function(e){hDrag=true;onHue(e);});
+  document.addEventListener('mousemove',function(e){if(hDrag)onHue(e);});
+  document.addEventListener('mouseup',function(){hDrag=false;});
+  hueCv.addEventListener('touchstart',onHue,{passive:false});
+  hueCv.addEventListener('touchmove',onHue,{passive:false});
+
+  // SB square
+  var sbDrag=false;
+  function onSB(e){
+    e.preventDefault();
+    var rect=sbCv.getBoundingClientRect();
+    var cx=e.touches?e.touches[0].clientX:e.clientX;
+    var cy=e.touches?e.touches[0].clientY:e.clientY;
+    S.s = clamp((cx-rect.left)/rect.width,0,1);
+    S.v = clamp(1-(cy-rect.top)/rect.height,0,1);
+    drawSB(); commit();
+  }
+  sbCv.addEventListener('mousedown',function(e){sbDrag=true;onSB(e);});
+  document.addEventListener('mousemove',function(e){if(sbDrag)onSB(e);});
+  document.addEventListener('mouseup',function(){sbDrag=false;});
+  sbCv.addEventListener('touchstart',onSB,{passive:false});
+  sbCv.addEventListener('touchmove',onSB,{passive:false});
+
+  // Hex input
+  hexIn.addEventListener('input',function(){
+    var v=hexIn.value.trim();
+    if(/^#[0-9a-f]{6}$/i.test(v)){
+      var c=_hexToHsv(v); S.h=c.h; S.s=c.s; S.v=c.v;
+      drawHue(); drawSB(); commit();
+    }
+  });
+
+  drawHue(); drawSB(); commit();
+}
 
 function applyCustomPreset(id) {
 
@@ -4713,6 +4978,52 @@ function deleteCustomPreset(id) {
   renderCustomizeView();
 
 }
+
+function editCustomPreset(id) {
+
+  var preset = getCustomPresets().find(function(x) { return x.id === id; });
+
+  if (!preset) return;
+
+  _editingPresetId = id;
+
+  function set(elId, val) { var el = document.getElementById(elId); if (el) el.value = (val != null ? val : ''); }
+
+  set('customBgUrl',      preset.bgUrl      || '');
+  set('customBgDim',      preset.bgDim      != null ? preset.bgDim      : 0);
+  set('customBgOpac',     preset.bgOpac     != null ? preset.bgOpac     : 0);
+  set('customCharUrl',    preset.charUrl    || '');
+  set('customCharDark',   preset.charDark   != null ? preset.charDark   : 0);
+  set('customCharDim',    preset.charDim    != null ? preset.charDim    : 0);
+  set('customHeaderUrl',  preset.headerUrl  || '');
+  set('customHeaderDim',  preset.headerDim  != null ? preset.headerDim  : 0);
+  set('customHeaderOpac', preset.headerOpac != null ? preset.headerOpac : 0);
+  set('customCornerUrl',  preset.cornerUrl  || '');
+  set('customCornerDark', preset.cornerDark != null ? preset.cornerDark : 0);
+  set('customCornerDim',  preset.cornerDim  != null ? preset.cornerDim  : 0);
+  set('customPresetName', preset.name       || '');
+
+  // Restore palette colour into the canvas picker
+  var hexEl = document.getElementById('cpHexInput');
+  if (hexEl && preset.paletteColor) {
+    hexEl.value = preset.paletteColor;
+    hexEl.dispatchEvent(new Event('input'));
+  }
+
+  // Trigger full live preview to refresh all sliders and miniatures
+  if (typeof _cpLivePreviewCb === 'function') _cpLivePreviewCb();
+
+  // Indicate editing state on the Save button
+  var saveBtn = document.getElementById('customSaveBtn');
+  if (saveBtn) saveBtn.innerHTML = '&#9998; Update Preset';
+
+  document.getElementById('view-customize').scrollIntoView({ behavior: 'smooth' });
+
+  showToast('Loaded for editing', preset.name, 'info');
+
+}
+
+window.editCustomPreset = editCustomPreset;
 
 window.deleteCustomPreset = deleteCustomPreset;
 

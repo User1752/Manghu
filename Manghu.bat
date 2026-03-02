@@ -50,59 +50,53 @@ echo.
 
 ::  4. Build and launch 
 :boot
-cd docker
-call :do_build
-if !BUILD_OK! NEQ 0 (
-    call :err "Failed to start" "Is Docker Desktop running?  See log below."
+cd /d "%~dp0docker"
+echo   !BCYN!  [ .. ]!R!  Starting Manghu...
+echo.
+docker compose up -d --build
+if ERRORLEVEL 1 (
     echo.
-    echo   !GRY!-- docker log ---------------------------------------------------!R!
-    type "%TEMP%\manghu_build.log" 2>nul
-    echo   !GRY!-----------------------------------------------------------------!R!
-    echo.
+    call :err "Failed to start" "Is Docker Desktop running?"
     pause & exit /b 1
 )
+cd /d "%~dp0"
 echo.
 call :status_box
 start "" "http://localhost:3000"
 
 ::  5. Interactive menu 
 :menu
+echo.
 echo   !GRY!  +-----------------------------------------------+!R!
 echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Rebuild ^& refresh                        !GRY!^|!R!
-echo   !GRY!  ^|!R!   !BOLD!!BPUR!O!R!  !WHT!Open in browser                          !GRY!^|!R!
-echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit ^& stop server                       !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit                                     !GRY!^|!R!
 echo   !GRY!  +-----------------------------------------------+!R!
 echo.
-set "CHOICE="
-set /p CHOICE="   >  "
-if /i "!CHOICE!"=="r" goto :do_refresh
-if /i "!CHOICE!"=="o" ( start "" "http://localhost:3000" & goto :menu )
-if /i "!CHOICE!"=="q" goto :do_quit
+CHOICE /C RQ /N /M "-> "
+if ERRORLEVEL 2 goto :do_quit
+if ERRORLEVEL 1 goto :do_rebuild
 goto :menu
 
 ::  Rebuild 
-:do_refresh
-call :banner
-echo   !BCYN!  [ .. ]!R!  Rebuilding...
+:do_rebuild
 echo.
-call :do_build
-if !BUILD_OK! NEQ 0 (
-    call :err "Rebuild failed" "Check the log below."
-    echo.
-    type "%TEMP%\manghu_build.log" 2>nul
-    echo.
-) else (
-    echo   !BGRN!  [ OK ]!R!  !BOLD!Refreshed!R!  --  !WHT!http://localhost:3000!R!
-    echo.
-)
+echo   !BCYN!  Rebuilding...!R!
+echo.
+cd /d "%~dp0docker"
+docker compose up -d --build
+cd /d "%~dp0"
+echo.
+echo   !BGRN!  Done!!R!
 goto :menu
 
 ::  Quit 
 :do_quit
 echo.
-call :anim_quit
-echo.
-echo   !BGRN!  [ OK ]!R!  Server stopped. !DIM!Goodbye!!R!
+echo   !BCYN!  Stopping...!R!
+cd /d "%~dp0docker"
+docker compose down >nul 2>&1
+cd /d "%~dp0"
+echo   !BGRN!  Goodbye!!R!
 echo.
 timeout /t 2 /nobreak >nul
 exit /b 0

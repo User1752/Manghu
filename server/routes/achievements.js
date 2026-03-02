@@ -14,12 +14,30 @@
 
 'use strict';
 
+const path        = require('path');
+const fsp         = require('fs').promises;
 const { readStore, writeStore } = require('../store');
+
+// achievements.json sits at <project-root>/data/achievements.json
+// __dirname here is <project-root>/server/routes/
+const ACHIEVEMENTS_JSON = path.join(__dirname, '..', '..', 'data', 'achievements.json');
 
 /**
  * @param {import('express').Router} router
  */
 function registerAchievementRoutes(router) {
+  // ── GET /api/achievements/definitions ─────────────────────────────────────
+  // Returns the static achievement definitions (categories + achievements).
+  router.get('/api/achievements/definitions', async (_req, res) => {
+    try {
+      const raw  = await fsp.readFile(ACHIEVEMENTS_JSON, 'utf8');
+      const data = JSON.parse(raw);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── GET /api/achievements ──────────────────────────────────────────────────
   router.get('/api/achievements', async (_req, res) => {
     try {

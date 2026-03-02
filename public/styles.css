@@ -1948,6 +1948,15 @@ body {
   margin-top: -0.35rem;
 }
 
+.setting-description code {
+  font-family: monospace;
+  font-size: 0.8rem;
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
 .settings-divider {
   height: 1px;
   background-color: var(--bg-tertiary);
@@ -2161,6 +2170,7 @@ body {
 .app-content {
   flex: 1;
   min-width: 0;
+  margin-left: 240px;
 }
 
 .sidebar {
@@ -2168,9 +2178,14 @@ body {
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--bg-tertiary);
   padding: 1rem;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   height: 100vh;
+  overflow-y: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
@@ -2233,6 +2248,10 @@ body {
 }
 
 @media (max-width: 900px) {
+  .app-content {
+    margin-left: 0;
+  }
+
   .sidebar {
     position: fixed;
     left: 0;
@@ -4882,6 +4901,66 @@ img.db-sprite {
   display: block;
   pointer-events: none;
 }
+
+/* ============================================================
+   SHENLONG OVERLAY (Dragon Ball Easter Egg)
+   ============================================================ */
+.shenlong-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.70) 100%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.shenlong-overlay.hidden { display: none; }
+
+.shenlong-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.shenlong-dragon-gif {
+  width: min(480px, 80vw);
+  height: auto;
+  border-radius: 12px;
+  filter: drop-shadow(0 0 32px rgba(0,255,136,0.5));
+}
+
+.shenlong-text {
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(0,255,136,0.7), 0 2px 8px rgba(0,0,0,0.8);
+  letter-spacing: 0.04em;
+  animation: shenlongTextIn 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes shenlongTextIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.shenlong-show { animation: shenlongFadeIn 0.45s ease both; }
+.shenlong-hide { animation: shenlongFadeOut 0.8s ease both; }
+
+@keyframes shenlongFadeIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes shenlongFadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.04); }
+}
+
 .shenlong-ap {
   font-size: 3.2rem;
   font-weight: 900;
@@ -5204,11 +5283,38 @@ img.db-sprite {
 
 .customize-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 1.2rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
 }
+
+/* ── Canvas colour picker ── */
+.cp-sb {
+  width: 100%; height: 130px;
+  border-radius: 8px; cursor: crosshair;
+  display: block; touch-action: none;
+}
+.cp-hue {
+  width: 100%; height: 14px;
+  border-radius: 8px; cursor: pointer;
+  display: block; margin-top: .5rem;
+  touch-action: none;
+}
+.cp-swatches {
+  display: flex; gap: .5rem; margin-top: .75rem;
+}
+.cp-swatch-group {
+  display: flex; flex-direction: column;
+  align-items: center; gap: .25rem; flex: 1;
+}
+.cp-swatch {
+  width: 100%; height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  transition: background .15s;
+}
+.palette-card .customize-preview-wrap { display: none; }
 
 .customize-card {
   background: var(--bg-secondary);
