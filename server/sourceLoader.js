@@ -103,7 +103,7 @@ function loadSourceFromFile(id) {
   // Clear the Node require() cache so a freshly-dropped file is picked up.
   try { delete require.cache[require.resolve(p)]; } catch (_) {}
 
-  const mod = require(p);
+  const mod = require(p); // pkg warning is benign: sources are listed in package.json "scripts"
 
   // Contract validation — fail loudly rather than silently returning broken sources.
   if (!mod?.meta?.id)                        throw new Error('Invalid source: missing meta.id');

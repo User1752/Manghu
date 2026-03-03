@@ -1542,10 +1542,10 @@ function renderChaptersList() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           Check Integrity
         </button>
-        <button class="btn-download-bulk" id="downloadBulkBtn" title="Download Multiple Chapters">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Bulk Download
-        </button>
+        ${state.currentSourceId !== 'local' ? `<button class="btn-download-bulk" id="downloadBulkBtn" title="Save chapters for offline reading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Offline
+        </button>` : ''}
       </div>
     </div>
     <div id="integrityReport"></div>
@@ -1562,9 +1562,7 @@ function renderChaptersList() {
             </div>
             <div class="chapter-action">
               ${isRead ? `<span class="read-badge">&#x2713;</span>` : ""}
-              <button class="btn-download-chapter" data-chapter-id="${escapeHtml(ch.id)}" data-chapter-name="${escapeHtml(ch.name || `Chapter ${ch.chapter || i + 1}`)}" title="Download this chapter" onclick="event.stopPropagation();">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
+              ${state.currentSourceId !== 'local' ? `<button class="btn-save-offline" data-chapter-id="${escapeHtml(ch.id)}" data-chapter-name="${escapeHtml(ch.name || `Chapter ${ch.chapter || i + 1}`)}" title="Save for offline reading" onclick="event.stopPropagation();"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>` : ''}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </div>`;
@@ -1584,11 +1582,11 @@ function renderChaptersList() {
     });
   });
 
-  // Download individual chapters
-  chapDiv.querySelectorAll(".btn-download-chapter").forEach(btn => {
+  // Save individual chapters for offline reading
+  chapDiv.querySelectorAll(".btn-save-offline").forEach(btn => {
     btn.onclick = async (e) => {
       e.stopPropagation();
-      await downloadChapter(btn.dataset.chapterId, btn.dataset.chapterName);
+      await saveChapterOffline(btn.dataset.chapterId, btn.dataset.chapterName);
     };
   });
 
@@ -1775,11 +1773,11 @@ function showBulkDownloadModal(chapters) {
     <div class="modal-overlay" id="bulkDownloadModal">
       <div class="modal-content modal-large">
         <div class="modal-header">
-          <h2>Bulk Download Chapters</h2>
+          <h2>Save Chapters Offline</h2>
           <button class="modal-close" onclick="closeBulkDownloadModal()">&#x2715;</button>
         </div>
         <div class="modal-body">
-          <p class="modal-description">Select chapters to download as a ZIP file:</p>
+          <p class="modal-description">Select chapters to save for offline reading:</p>
           <div class="bulk-download-controls">
             <button class="btn btn-sm" onclick="selectAllChapters()">Select All</button>
             <button class="btn btn-sm" onclick="deselectAllChapters()">Deselect All</button>
@@ -1796,7 +1794,7 @@ function showBulkDownloadModal(chapters) {
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" onclick="closeBulkDownloadModal()">Cancel</button>
-          <button class="btn" id="confirmBulkDownload">Download Selected</button>
+          <button class="btn btn-save-bulk-offline" id="confirmBulkSaveOffline">Save Selected</button>
         </div>
       </div>
     </div>
@@ -1818,18 +1816,18 @@ function showBulkDownloadModal(chapters) {
     cb.addEventListener('change', updateCount);
   });
 
-  // Confirm download button
-  $("confirmBulkDownload").onclick = async () => {
+  // Confirm save offline button
+  $("confirmBulkSaveOffline").onclick = async () => {
     const selected = Array.from(document.querySelectorAll('.bulk-chapter-checkbox:checked'))
       .map(cb => ({ id: cb.dataset.chapterId, name: cb.dataset.chapterName }));
-    
+
     if (selected.length === 0) {
       showToast("No Selection", "Please select at least one chapter", "warning");
       return;
     }
 
     closeBulkDownloadModal();
-    await downloadBulkChapters(selected);
+    await saveBulkOffline(selected);
   };
 }
 
@@ -1946,6 +1944,101 @@ window.closeBulkProgressModal = function() {
   const m = $("bulkProgressModal");
   if (m) m.remove();
 };
+
+// ============================================================================
+// OFFLINE SAVE
+// ============================================================================
+
+async function saveChapterOffline(chapterId, chapterName) {
+  showToast("Saving...", `Saving "${chapterName}" for offline reading`, "info");
+  try {
+    const resp = await fetch("/api/local/save-chapter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sourceId: state.currentSourceId,
+        chapterId,
+        chapterName,
+        mangaTitle: state.currentManga?.title || "Unknown",
+        mangaId: state.currentManga?.id || "",
+        cover: state.currentManga?.cover || ""
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showToast("Error", err.error || "Could not save chapter offline", "error");
+      return;
+    }
+    const data = await resp.json();
+    if (data.skipped) {
+      showToast("Already Saved", `"${chapterName}" is already in your offline library`, "info");
+    } else {
+      showToast("Saved Offline", `"${chapterName}" saved. Open the Library tab to read it offline.`, "success");
+    }
+  } catch (e) {
+    showToast("Error", `Save offline failed: ${e.message}`, "error");
+  }
+}
+
+async function saveBulkOffline(selectedChapters) {
+  // Step 1 — start the save job on the server
+  let jobId;
+  try {
+    const startResp = await fetch("/api/local/save-bulk/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sourceId: state.currentSourceId,
+        mangaTitle: state.currentManga?.title || "Unknown",
+        mangaId: state.currentManga?.id || "",
+        cover: state.currentManga?.cover || "",
+        chapters: selectedChapters
+      })
+    });
+    if (!startResp.ok) {
+      const err = await startResp.json().catch(() => ({}));
+      showToast("Error", err.error || "Could not start offline save", "error");
+      return;
+    }
+    ({ jobId } = await startResp.json());
+  } catch (e) {
+    showToast("Error", `Offline save failed: ${e.message}`, "error");
+    return;
+  }
+
+  // Step 2 — show progress modal and listen to SSE
+  showBulkProgressModal(selectedChapters.length);
+  const saveModal = $("bulkProgressModal");
+  if (saveModal) {
+    const h2 = saveModal.querySelector("h2");
+    if (h2) h2.textContent = "Saving Offline...";
+  }
+
+  await new Promise((resolve) => {
+    const es = new EventSource(`/api/local/save-bulk/progress/${jobId}`);
+
+    es.addEventListener('progress', (e) => {
+      const { done, total, chapter } = JSON.parse(e.data);
+      updateBulkProgress(done, total, chapter);
+    });
+
+    es.addEventListener('done', () => {
+      es.close();
+      updateBulkProgress(selectedChapters.length, selectedChapters.length, '');
+      setTimeout(() => closeBulkProgressModal(), 800);
+      showToast("Saved to Library", `${selectedChapters.length} chapter(s) saved. Open the Library tab to read offline.`, "success");
+      resolve();
+    });
+
+    es.addEventListener('error', (e) => {
+      es.close();
+      const msg = e.data ? JSON.parse(e.data).error : 'Unknown error';
+      closeBulkProgressModal();
+      showToast("Error", msg || "Offline save failed", "error");
+      resolve();
+    });
+  });
+}
 
 // ============================================================================
 // CHAPTER INTEGRITY CHECK

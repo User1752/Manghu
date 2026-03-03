@@ -33,12 +33,14 @@
 
 'use strict';
 
+const crypto = require('crypto');
 const fs   = require('fs');
 const fsp  = fs.promises;
 const path = require('path');
 const express  = require('express');
 const AdmZip   = require('adm-zip');
-const { safeId, sha1Short } = require('../helpers');
+const { safeId, sha1Short, isSafeUrl } = require('../helpers');
+const { loadSourceFromFile } = require('../sourceLoader');
 
 // Injected via configure()
 let LOCAL_DIR = '';
@@ -57,6 +59,171 @@ const IMG_EXT_RE = /\.(jpe?g|png|gif|webp)$/i;
 
 /** Map "jpeg" → "jpg" for consistency. */
 const normaliseExt = (e) => e.replace(/^jpeg$/i, 'jpg');
+
+// ── Offline-save helpers ─────────────────────────────────────────────────────
+
+const IMG_FETCH_TIMEOUT = 30_000;
+
+async function fetchImageBuffer(url, referer = 'https://mangadex.org/') {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), IMG_FETCH_TIMEOUT);
+  try {
+    const resp = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Referer:      referer,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return Buffer.from(await resp.arrayBuffer());
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+function resolvePageUrl(page) {
+  const raw = typeof page === 'string' ? page : page?.img;
+  if (!raw) return null;
+  try {
+    const u = new URL(raw, 'http://localhost');
+    if (u.pathname === '/api/proxy-image') {
+      const inner = u.searchParams.get('url');
+      const ref   = u.searchParams.get('ref');
+      if (inner && isSafeUrl(inner))
+        return { url: inner, referer: ref ? decodeURIComponent(ref) : undefined };
+      return null;
+    }
+  } catch { /* fall through */ }
+  if (isSafeUrl(raw)) return { url: raw, referer: undefined };
+  return null;
+}
+
+const safeName = (s) => String(s || '').replace(/[^a-z0-9\-_. ]/gi, '_').trim() || 'chapter';
+
+/**
+ * Saves a single chapter from any source into the local library.
+ * Finds or creates a local manga folder keyed by sourceId+mangaId so all
+ * chapters from the same manga land in the same folder.
+ *
+ * @param {{ sourceId, chapterId, chapterName, mangaTitle, mangaId, cover }} opts
+ * @returns {Promise<string>} localMangaId
+ */
+async function saveChapterToLocal({ sourceId, chapterId, chapterName, mangaTitle, mangaId, cover }) {
+  const source = loadSourceFromFile(sourceId);
+  const result = await source.pages(chapterId);
+  const pages  = result.pages || [];
+
+  // Stable folder name so all chapters from the same manga share one entry
+  const localId  = `local-dl-${sha1Short(sourceId + ':' + mangaId)}`;
+  const mangaDir = path.join(LOCAL_DIR, localId);
+  const chapDir  = path.join(mangaDir, 'images', safeName(chapterName));
+  await fsp.mkdir(chapDir, { recursive: true });
+
+  const imgPaths = [];
+  for (let i = 0; i < pages.length; i++) {
+    const resolved = resolvePageUrl(pages[i]);
+    if (!resolved) continue;
+    const { url: imgUrl, referer } = resolved;
+    try {
+      const buf = await fetchImageBuffer(imgUrl, referer);
+      const ext = ((imgUrl.match(/\.(jpe?g|png|webp|gif)/i) || ['', 'jpg'])[1]).replace('jpeg', 'jpg');
+      const fname = `${String(i + 1).padStart(4, '0')}.${ext}`;
+      await fsp.writeFile(path.join(chapDir, fname), buf);
+      imgPaths.push(`/local-media/${localId}/images/${safeName(chapterName)}/${fname}`);
+    } catch (e) {
+      console.warn(`[save-offline] skipped page ${i + 1}: ${e.message}`);
+    }
+  }
+
+  // Create or update meta.json
+  const metaPath = path.join(mangaDir, 'meta.json');
+  let meta;
+  if (fs.existsSync(metaPath)) {
+    meta = JSON.parse(await fsp.readFile(metaPath, 'utf8'));
+  } else {
+    // Determine cover — use provided cover URL or first page
+    let localCover = imgPaths[0] || '';
+    // If cover URL is an external URL, try to fetch and save it
+    if (cover && isSafeUrl(cover)) {
+      try {
+        const covBuf = await fetchImageBuffer(cover);
+        const covPath = path.join(mangaDir, 'cover.jpg');
+        await fsp.writeFile(covPath, covBuf);
+        localCover = `/local-media/${localId}/cover.jpg`;
+      } catch (_) { /* use first page as cover */ }
+    }
+    meta = {
+      id:          localId,
+      title:       mangaTitle,
+      cover:       localCover,
+      type:        'cbz',
+      sourceId:    'local',
+      description: `Downloaded from ${sourceId}`,
+      genres:      [],
+      author:      '',
+      chapters:    [],
+    };
+  }
+
+  // Skip if this chapter was already saved
+  const alreadySaved = meta.chapters.some(c => c.sourceChapterId === chapterId);
+  if (!alreadySaved && imgPaths.length > 0) {
+    const chIndex = meta.chapters.length;
+    meta.chapters.push({
+      id:              `${localId}:${chIndex}`,
+      sourceChapterId: chapterId,
+      name:            chapterName,
+      date:            new Date().toISOString(),
+      isPDF:           false,
+      pdfUrl:          null,
+      pages:           imgPaths,
+    });
+    // Update cover from first available chapter
+    if (!meta.cover) meta.cover = imgPaths[0] || '';
+    await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf8');
+  }
+
+  return localId;
+}
+
+/** In-memory save-bulk job store */
+const saveJobs = new Map();
+const SAVE_JOB_TTL = 15 * 60 * 1000;
+
+async function processSaveJob(jobId, chapters, sourceId, mangaTitle, mangaId, cover) {
+  const job = saveJobs.get(jobId);
+  if (!job) return;
+  job.status = 'running';
+  let localId = null;
+
+  for (let ci = 0; ci < chapters.length; ci++) {
+    const ch = chapters[ci];
+    job.done = ci;
+    const notify = (ev, data) => {
+      const line = `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`;
+      for (const w of job.listeners) { try { w(line); } catch (_) {} }
+    };
+    notify('progress', { done: ci, total: chapters.length, chapter: ch.name });
+
+    try {
+      localId = await saveChapterToLocal({ sourceId, chapterId: ch.id, chapterName: ch.name, mangaTitle, mangaId, cover });
+    } catch (e) {
+      console.warn(`[save-bulk] failed ${ch.name}: ${e.message}`);
+    }
+  }
+
+  job.done      = chapters.length;
+  job.localId   = localId;
+  job.status    = 'done';
+  const doneNotify = (ev, data) => {
+    const line = `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const w of job.listeners) { try { w(line); } catch (_) {} }
+  };
+  doneNotify('progress', { done: chapters.length, total: chapters.length, chapter: '' });
+  doneNotify('done', { localId });
+  setTimeout(() => saveJobs.delete(jobId), SAVE_JOB_TTL);
+}
 
 /**
  * @param {import('express').Router} router  The app-level router
@@ -333,6 +500,64 @@ function registerLocalRoutes(router) {
       // Always clean up the temporary upload file.
       if (tmpPath) fsp.unlink(tmpPath).catch(() => {});
     }
+  });
+
+  // ── POST /api/local/save-chapter ───────────────────────────────────────────
+  // Saves a single online chapter into the local library so it can be read offline.
+  router.post('/api/local/save-chapter', async (req, res) => {
+    try {
+      const { sourceId, chapterId, chapterName, mangaTitle, mangaId, cover } = req.body || {};
+      const sid = safeId(sourceId);
+      if (!sid || !chapterId || !mangaId)
+        return res.status(400).json({ error: 'Missing required fields' });
+
+      const localId = await saveChapterToLocal({ sourceId: sid, chapterId, chapterName, mangaTitle, mangaId, cover });
+      res.json({ success: true, localId });
+    } catch (e) {
+      console.error('[save-chapter]', e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── POST /api/local/save-bulk/start ────────────────────────────────────────
+  router.post('/api/local/save-bulk/start', async (req, res) => {
+    try {
+      const { sourceId, chapters, mangaTitle, mangaId, cover } = req.body || {};
+      const sid = safeId(sourceId);
+      if (!sid || !Array.isArray(chapters) || chapters.length === 0 || !mangaId)
+        return res.status(400).json({ error: 'Missing required fields' });
+
+      const jobId = crypto.randomBytes(8).toString('hex');
+      saveJobs.set(jobId, { status: 'pending', done: 0, total: chapters.length, listeners: [], localId: null });
+      processSaveJob(jobId, chapters, sid, mangaTitle, mangaId, cover);
+      res.json({ jobId });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── GET /api/local/save-bulk/progress/:jobId (SSE) ─────────────────────────
+  router.get('/api/local/save-bulk/progress/:jobId', (req, res) => {
+    const job = saveJobs.get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Content-Encoding', 'identity');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const write = (line) => { res.write(line); if (typeof res.flush === 'function') res.flush(); };
+    write(`event: progress\ndata: ${JSON.stringify({ done: job.done, total: job.total, chapter: '' })}\n\n`);
+
+    if (job.status === 'done') {
+      write(`event: done\ndata: ${JSON.stringify({ localId: job.localId })}\n\n`);
+      res.end();
+      return;
+    }
+    job.listeners.push(write);
+    req.on('close', () => { job.listeners = job.listeners.filter(l => l !== write); });
   });
 }
 
