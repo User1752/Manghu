@@ -72,13 +72,14 @@ echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Rebuild ^& refresh                 
 echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit                                     !GRY!^|!R!
 echo   !GRY!  +-----------------------------------------------+!R!
 echo.
-CHOICE /C RQ /N /M "-> "
-if ERRORLEVEL 2 goto :do_quit
-if ERRORLEVEL 1 goto :do_rebuild
+for /f "delims=" %%k in ('powershell -noprofile -nologo -command "$k=$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown'); Write-Output $k.Character"') do set "_key=%%k"
+if /i "!_key!"=="R" goto :do_rebuild
+if /i "!_key!"=="Q" goto :do_quit
 goto :menu
 
 ::  Rebuild 
 :do_rebuild
+cls
 echo.
 echo   !BCYN!  Rebuilding...!R!
 echo.

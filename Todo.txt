@@ -1,4 +1,3 @@
--Theme Gintama
 -Theme Berserk
+- as moedas mudam c o tema
 -o user pode escolher imagens dentro de cada tema
-

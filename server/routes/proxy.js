@@ -29,6 +29,26 @@ const ALLOWED_IMAGE_CT = /^image\/(jpeg|png|gif|webp|avif|bmp|svg\+xml)/i;
  * @param {import('express').Router} router
  */
 function registerProxyRoutes(router) {
+  // ── POST /api/anilist ────────────────────────────────────────────────────────
+  // Proxies AniList GraphQL requests from the browser to avoid CORS issues.
+  router.post('/api/anilist', async (req, res) => {
+    try {
+      const { query, variables } = req.body || {};
+      if (!query || typeof query !== 'string') return res.status(400).json({ error: 'Missing query' });
+
+      const aniRes = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const data = await aniRes.json();
+      res.status(aniRes.status).json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   router.get('/api/proxy-image', async (req, res) => {
     const { url, ref } = req.query;
 

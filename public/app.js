@@ -1850,11 +1850,10 @@ window.deselectAllChapters = function() {
 };
 
 async function downloadBulkChapters(selectedChapters) {
+  // Step 1 — start the job on the server
+  let jobId;
   try {
-    showToast("Bulk Download Started", `Fetching ${selectedChapters.length} chapters — this may take a while...`, "info");
-
-    // Request CBZ from server (binary response — server fetches all images)
-    const resp = await fetch("/api/download/bulk", {
+    const startResp = await fetch("/api/download/bulk/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1863,30 +1862,90 @@ async function downloadBulkChapters(selectedChapters) {
         chapters: selectedChapters
       })
     });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      showToast("Error", err.error || "Bulk download failed", "error");
+    if (!startResp.ok) {
+      const err = await startResp.json().catch(() => ({}));
+      showToast("Error", err.error || "Could not start download", "error");
       return;
     }
-
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const filename = (resp.headers.get("Content-Disposition") || "").match(/filename="(.+?)"/)?.at(1)
-      || `${state.currentManga?.title || "manga"}_chapters.cbz`;
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    showToast("Download Complete", `${selectedChapters.length} chapters saved as CBZ!`, "success");
+    ({ jobId } = await startResp.json());
   } catch (e) {
     showToast("Error", `Bulk download failed: ${e.message}`, "error");
+    return;
   }
+
+  // Step 2 — show progress modal and listen to SSE
+  showBulkProgressModal(selectedChapters.length);
+
+  await new Promise((resolve) => {
+    const es = new EventSource(`/api/download/bulk/progress/${jobId}`);
+
+    es.addEventListener('progress', (e) => {
+      const { done, total, chapter } = JSON.parse(e.data);
+      updateBulkProgress(done, total, chapter);
+    });
+
+    es.addEventListener('done', async () => {
+      es.close();
+      updateBulkProgress(selectedChapters.length, selectedChapters.length, '');
+
+      // Step 3 — trigger file download
+      const link = document.createElement('a');
+      link.href = `/api/download/bulk/file/${jobId}`;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => closeBulkProgressModal(), 800);
+      showToast("Download Complete", `${selectedChapters.length} chapters saved as CBZ!`, "success");
+      resolve();
+    });
+
+    es.addEventListener('error', (e) => {
+      es.close();
+      const msg = e.data ? JSON.parse(e.data).error : 'Unknown error';
+      closeBulkProgressModal();
+      showToast("Error", msg || "Bulk download failed", "error");
+      resolve();
+    });
+  });
 }
+
+function showBulkProgressModal(total) {
+  const existing = $("bulkProgressModal");
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay" id="bulkProgressModal">
+      <div class="modal-content bulk-progress-modal">
+        <div class="modal-header">
+          <h2>Downloading...</h2>
+        </div>
+        <div class="modal-body">
+          <div class="bulk-progress-chapter" id="bulkProgressChapter">Starting...</div>
+          <div class="bulk-progress-bar-wrap">
+            <div class="bulk-progress-bar" id="bulkProgressBar" style="width:0%"></div>
+          </div>
+          <div class="bulk-progress-count" id="bulkProgressCount">0 / ${total}</div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function updateBulkProgress(done, total, chapter) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const bar = $("bulkProgressBar");
+  const count = $("bulkProgressCount");
+  const chEl = $("bulkProgressChapter");
+  if (bar) bar.style.width = pct + '%';
+  if (count) count.textContent = `${done} / ${total}`;
+  if (chEl && chapter) chEl.textContent = chapter;
+}
+
+window.closeBulkProgressModal = function() {
+  const m = $("bulkProgressModal");
+  if (m) m.remove();
+};
 
 // ============================================================================
 // CHAPTER INTEGRITY CHECK
@@ -2135,18 +2194,23 @@ window.checkAnimeAdaptation = async function(title) {
   // 1. Look up the manga entry and follow its ADAPTATION relations to anime
   // 2. Directly search AniList for anime with the same title (catches cases
   //    where the manga<->anime relation isn't populated on AniList)
+  // Use Page for the manga lookup so that a missing manga returns [] instead of
+  // causing AniList to return HTTP 400 (non-nullable Media field = null), which
+  // would kill the animeDirect results too.
   const query = `
     query ($search: String) {
-      mangaEntry: Media(search: $search, type: MANGA) {
-        id
-        relations {
-          edges {
-            relationType
-            node {
-              id type format status
-              title { romaji english native }
-              siteUrl
-              coverImage { medium }
+      mangaPage: Page(perPage: 1) {
+        media(search: $search, type: MANGA) {
+          id
+          relations {
+            edges {
+              relationType
+              node {
+                id type format status
+                title { romaji english native }
+                siteUrl
+                coverImage { medium }
+              }
             }
           }
         }
@@ -2163,7 +2227,7 @@ window.checkAnimeAdaptation = async function(title) {
   `;
 
   try {
-    const res = await fetch("https://graphql.anilist.co", {
+    const res = await fetch("/api/anilist", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({ query, variables: { search: title } })
@@ -2171,7 +2235,8 @@ window.checkAnimeAdaptation = async function(title) {
     const data = await res.json();
 
     // --- Source 1: ADAPTATION relations from the manga entry ---
-    const relationEdges = data?.data?.mangaEntry?.relations?.edges || [];
+    const mangaEntry = (data?.data?.mangaPage?.media || [])[0] || null;
+    const relationEdges = mangaEntry?.relations?.edges || [];
     const fromRelations = relationEdges
       .filter(e => e.relationType === "ADAPTATION" && e.node.type === "ANIME")
       .map(e => e.node);
