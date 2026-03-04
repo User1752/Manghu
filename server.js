@@ -133,8 +133,7 @@ async function ensureDirs() {
   for (const dir of [DATA_DIR, SOURCES_DIR, CACHE_DIR, LOCAL_DIR, TMP_DIR]) {
     await fsp.mkdir(dir, { recursive: true });
   }
-  // Seed user-writable sources from the bundled snapshot (pkg only, first run).
-  sourceLoader.seedSourcesFromSnapshot();
+  // Bundled sources are loaded directly from the pkg snapshot; no seeding needed.
   if (!fs.existsSync(STORE_PATH)) {
     await fsp.writeFile(
       STORE_PATH,

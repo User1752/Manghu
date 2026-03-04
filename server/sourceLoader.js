@@ -103,10 +103,29 @@ function loadSourceFromFile(id) {
   // Clear the Node require() cache so a freshly-dropped file is picked up.
   try { delete require.cache[require.resolve(p)]; } catch (_) {}
 
-  const mod = require(p); // pkg warning is benign: sources are listed in package.json "scripts"
+  let mod;
+  try {
+    mod = require(p);
+  } catch (loadErr) {
+    // Real-FS file may be a stale bytecode copy from an old pkg build.
+    // Fall back to the snapshot path which is always valid bytecode.
+    if (IS_PKG) {
+      const snapPath = path.resolve(path.join(SNAP_SOURCES_DIR, `${id}.js`));
+      if (fs.existsSync(snapPath) && snapPath !== p) {
+        try { delete require.cache[require.resolve(snapPath)]; } catch (_) {}
+        mod = require(snapPath);
+        // Delete the bad real-FS file so the snapshot is used directly next time
+        try { fs.unlinkSync(p); } catch (_) {}
+      } else {
+        throw loadErr;
+      }
+    } else {
+      throw loadErr;
+    }
+  }
 
   // Contract validation — fail loudly rather than silently returning broken sources.
-  if (!mod?.meta?.id)                        throw new Error('Invalid source: missing meta.id');
+  if (!mod?.meta?.id)                         throw new Error('Invalid source: missing meta.id');
   if (typeof mod.search       !== 'function') throw new Error('Source missing search()');
   if (typeof mod.mangaDetails !== 'function') throw new Error('Source missing mangaDetails()');
   if (typeof mod.chapters     !== 'function') throw new Error('Source missing chapters()');
@@ -247,18 +266,14 @@ async function autoInstallLocalSources() {
 }
 
 /**
- * Seeds the user-writable sources directory from the bundled snapshot on the
- * very first run (or when individual files are missing).
+ * Bundled sources live in the pkg snapshot as bytecode ("scripts").
+ * sourcePath() already falls back to the snapshot path when no real-FS file exists,
+ * so require(snapPath) loads them correctly — no need to copy anything to disk.
+ * User-installed sources are downloaded directly to SOURCES_DIR by the install route.
  */
 function seedSourcesFromSnapshot() {
-  if (!IS_PKG || !fs.existsSync(SNAP_SOURCES_DIR)) return;
-  for (const file of fs.readdirSync(SNAP_SOURCES_DIR).filter(f => f.endsWith('.js'))) {
-    const dest = path.join(SOURCES_DIR, file);
-    if (!fs.existsSync(dest)) {
-      fs.copyFileSync(path.join(SNAP_SOURCES_DIR, file), dest);
-      console.log(`✦ Seeded source: ${file}`);
-    }
-  }
+  // intentionally empty — seeding is not needed and causes problems
+  // (copying snapshot bytecode to disk makes require(realPath) fail)
 }
 
 module.exports = {
