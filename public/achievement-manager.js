@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Achievement Manager
  * Manages achievement loading, tracking, and unlocking
  */
@@ -12,7 +12,7 @@ class AchievementManager {
     this.categories = [];
     this.unlockedAchievements = new Set();
     this.achievementPoints = 0;
-    this.storageKey = 'manghu_unlocked_achievements';
+    this.storageKey = 'scrollscape_unlocked_achievements';
     // Populate immediately from bundled fallback so the page never starts empty.
     this._applyData(_ACHIEVEMENT_FALLBACK);
     this.loadFromStorage();

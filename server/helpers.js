@@ -1,5 +1,5 @@
-/**
- * helpers.js — Shared utility functions for Manghu server
+﻿/**
+ * helpers.js — Shared utility functions for ScrollScape server
  *
  * Exports:
  *   safeId(id)           — Validates and returns a safe alphanumeric ID (or null)

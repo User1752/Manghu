@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // UTILITIES
 // Stateless helper functions shared across the entire frontend.
 // No dependencies on state, navigation, or i18n.
@@ -68,7 +68,7 @@ function statusLabel(status) {
  * Should be called once during app initialisation.
  */
 function initTheme() {
-  const saved = localStorage.getItem("manghuTheme") || "dark";
+  const saved = localStorage.getItem("scrollscapeTheme") || "dark";
   document.documentElement.setAttribute("data-theme", saved);
   updateThemeToggleIcon(saved);
 }
@@ -80,7 +80,7 @@ function toggleTheme() {
   const current = document.documentElement.getAttribute("data-theme") || "dark";
   const next = current === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("manghuTheme", next);
+  localStorage.setItem("scrollscapeTheme", next);
   updateThemeToggleIcon(next);
 }
 

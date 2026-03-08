@@ -1,10 +1,10 @@
-services:
-  # ── Manghu ───────────────────────────────────────────────────
-  manghu:
+﻿services:
+  # ── ScrollScape ───────────────────────────────────────────────────
+  scrollscape:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: manghu
+    container_name: scrollscape
     ports:
       - "3000:3000"
     volumes:

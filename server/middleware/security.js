@@ -1,5 +1,5 @@
-/**
- * security.js — Express security middleware for Manghu
+﻿/**
+ * security.js — Express security middleware for ScrollScape
  *
  * This module registers two sets of middleware:
  *

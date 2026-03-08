@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+﻿/* eslint-disable no-console */
 const express = require("express");
 const fs = require("fs");
 const fsp = fs.promises;
@@ -1351,7 +1351,7 @@ ensureDirs()
     // As standalone exe: bind 127.0.0.1 so the server is never reachable from outside the machine.
     const host = IS_PKG ? "127.0.0.1" : "0.0.0.0";
     app.listen(PORT, host, () => {
-      console.log(`🎌 Manghu running on http://localhost:${PORT}`);
+      console.log(`🎌 ScrollScape running on http://localhost:${PORT}`);
       console.log(`📚 Sources instaladas automaticamente!`);
       if (IS_PKG) {
         // Auto-open browser when running as standalone exe

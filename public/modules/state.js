@@ -1,6 +1,6 @@
-// ============================================================================
+﻿// ============================================================================
 // APPLICATION STATE
-// Single global object that holds all runtime state for the Manghu frontend.
+// Single global object that holds all runtime state for the ScrollScape frontend.
 // Mutated in-place by feature modules; never replaced wholesale.
 // ============================================================================
 

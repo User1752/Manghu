@@ -1,4 +1,4 @@
-# ── Manghu EXE builder ────────────────────────────────────────────────────────
+﻿# ── ScrollScape EXE builder ────────────────────────────────────────────────────────
 # Builds a self-contained Windows x64 exe inside Docker (no Node.js required
 # on the host machine). Run via build-exe.bat.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -17,4 +17,4 @@ COPY . .
 
 # The actual pkg compile runs at `docker run` time so the output can be written
 # to the /out volume (which maps to dist\ on the host)
-CMD npx @yao-pkg/pkg . --targets node20-win-x64 --output /out/Manghu.exe --compress GZip && echo ">>> Manghu.exe built successfully <<<"
+CMD npx @yao-pkg/pkg . --targets node20-win-x64 --output /out/ScrollScape.exe --compress GZip && echo ">>> ScrollScape.exe built successfully <<<"

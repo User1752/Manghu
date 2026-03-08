@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // NAVIGATION MANAGER
 // Manages a browser-history-like stack of views with context preservation.
 // Persists across page reloads via localStorage.
@@ -13,7 +13,7 @@ class NavigationManager {
     this.stack = [];
     this.currentView = null;
     this.currentContext = {};
-    this.storageKey = 'manghu_nav_stack';
+    this.storageKey = 'scrollscape_nav_stack';
     this.loadFromStorage();
   }
 

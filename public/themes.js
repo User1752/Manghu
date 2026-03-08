@@ -1,5 +1,5 @@
 ﻿/**
- * themes.js â€” Community Themes for Manghu
+ * themes.js â€” Community Themes for ScrollScape
  * =========================================
  * This file is loaded before app.js. Add your theme here and it will
  * automatically appear in the AP Shop.

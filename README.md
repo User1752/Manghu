@@ -1,4 +1,4 @@
-﻿# Manghu
+﻿# ScrollScape
 
 > Self-hosted manga reader  multiple online sources, local file support, reading progress, library management, and more. Runs via Docker or as a standalone executable. No account required.
 
@@ -30,14 +30,14 @@
 
 ### Windows  Docker (recommended)
 ```bat
-Manghu.bat
+ScrollScape.bat
 ```
 Double-click the bat file. It will start Docker Desktop if needed, build the container, and open `http://localhost:3000` automatically.
 
 ### Linux / macOS  Docker
 ```bash
-chmod +x manghu.sh
-./manghu.sh
+chmod +x scrollscape.sh
+./scrollscape.sh
 ```
 
 ### Any platform  Node.js
@@ -50,7 +50,7 @@ node server.js
 ### Android (Termux)
 ```bash
 pkg update && pkg install nodejs git
-git clone <repo> Manghu && cd Manghu
+git clone <repo> ScrollScape && cd ScrollScape
 npm install && node server.js
 # Open http://localhost:3000 in your mobile browser
 ```
@@ -141,9 +141,9 @@ All endpoints are prefixed `/api/`. Rate limit: **600 requests / 10 minutes** pe
 **Requires:** Node.js 20 + `npm install`
 
 ```bash
-npm run build:win    # dist/Manghu-win.exe
-npm run build:linux  # dist/Manghu-linux
-npm run build:mac    # dist/Manghu-mac
+npm run build:win    # dist/ScrollScape-win.exe
+npm run build:linux  # dist/ScrollScape-linux
+npm run build:mac    # dist/ScrollScape-mac
 npm run build:all    # all three
 ```
 
@@ -156,7 +156,7 @@ The executable bundles the full Node.js runtime  no Node.js needed on the target
 ```yaml
 # docker/docker-compose.yml
 services:
-  manghu:
+  scrollscape:
     build:
       context: ..
       dockerfile: docker/Dockerfile

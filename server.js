@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
+﻿/* eslint-disable no-console */
 /**
- * server.js — Manghu application entry point (thin orchestrator)
+ * server.js — ScrollScape application entry point (thin orchestrator)
  *
  * This file is intentionally kept small.  All business logic lives in the
  * modules under server/:
@@ -167,7 +167,7 @@ ensureDirs()
     // Docker / Termux / server: bind to all interfaces for port-mapping.
     const host = IS_PKG ? '127.0.0.1' : '0.0.0.0';
     app.listen(PORT, host, () => {
-      console.log(`🎌 Manghu running on http://localhost:${PORT}`);
+      console.log(`🎌 ScrollScape running on http://localhost:${PORT}`);
       console.log(`📚 Sources auto-installed!`);
       if (IS_PKG) openBrowser(`http://localhost:${PORT}`);
     });

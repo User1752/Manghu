@@ -1,11 +1,11 @@
-// ============================================================================
+﻿// ============================================================================
 // API HELPER
 // Thin wrapper around fetch that handles JSON parsing and error propagation.
-// All network requests to the Manghu backend go through this function.
+// All network requests to the ScrollScape backend go through this function.
 // ============================================================================
 
 /**
- * Send a request to the Manghu backend API.
+ * Send a request to the ScrollScape backend API.
  *
  * @param {string} path - Absolute path, e.g. "/api/state"
  * @param {RequestInit} [opts] - Optional fetch options (method, body, …)

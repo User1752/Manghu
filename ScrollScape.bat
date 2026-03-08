@@ -1,6 +1,6 @@
-@echo off
+﻿@echo off
 setlocal EnableDelayedExpansion
-title Manghu
+title ScrollScape
 chcp 65001 >nul 2>&1
 cls
 
@@ -51,7 +51,7 @@ echo.
 ::  4. Build and launch 
 :boot
 cd /d "%~dp0docker"
-echo   !BCYN!  [ .. ]!R!  Starting Manghu...
+echo   !BCYN!  [ .. ]!R!  Starting ScrollScape...
 echo.
 docker compose up -d --build
 if ERRORLEVEL 1 (
@@ -124,7 +124,7 @@ goto :eof
 ::  Status box 
 :status_box
 echo   !GRY!  +-----------------------------------------------+!R!
-echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!Manghu is running!R!                     !GRY!^|!R!
+echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!ScrollScape is running!R!                     !GRY!^|!R!
 echo   !GRY!  ^|!R!                                                 !GRY!^|!R!
 echo   !GRY!  ^|!R!       !BOLD!!WHT!http://localhost:3000!R!                   !GRY!^|!R!
 echo   !GRY!  +-----------------------------------------------+!R!
@@ -142,9 +142,9 @@ goto :eof
 
 ::  Background build with animated progress bar 
 :do_build
-set "LOGF=%TEMP%\manghu_build.log"
-set "DONEF=%TEMP%\manghu_build.done"
-set "HLPF=%TEMP%\manghu_build_helper.bat"
+set "LOGF=%TEMP%\scrollscape_build.log"
+set "DONEF=%TEMP%\scrollscape_build.done"
+set "HLPF=%TEMP%\scrollscape_build_helper.bat"
 2>nul del "!DONEF!" "!LOGF!" "!HLPF!"
 
 :: Write helper script (runs in bg, writes result flag when done)
@@ -212,10 +212,10 @@ set "qi=0"
 :_qloop
 if !qi! GEQ 3 goto :_qdone
 set /a "f=qi %% 4"
-if !f!==0 (<nul set /p ="   !BCYN![ / ]!R!  Stopping Manghu...  !CR!")
-if !f!==1 (<nul set /p ="   !BCYN![ - ]!R!  Stopping Manghu...  !CR!")
-if !f!==2 (<nul set /p ="   !BCYN![ \ ]!R!  Stopping Manghu...  !CR!")
-if !f!==3 (<nul set /p ="   !BCYN![ | ]!R!  Stopping Manghu...  !CR!")
+if !f!==0 (<nul set /p ="   !BCYN![ / ]!R!  Stopping ScrollScape...  !CR!")
+if !f!==1 (<nul set /p ="   !BCYN![ - ]!R!  Stopping ScrollScape...  !CR!")
+if !f!==2 (<nul set /p ="   !BCYN![ \ ]!R!  Stopping ScrollScape...  !CR!")
+if !f!==3 (<nul set /p ="   !BCYN![ | ]!R!  Stopping ScrollScape...  !CR!")
 timeout /t 1 /nobreak >nul
 set /a qi+=1
 goto :_qloop

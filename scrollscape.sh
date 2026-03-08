@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # =============================================================================
-# manghu.sh — Manghu launcher for Linux & macOS
-# Usage: bash manghu.sh  (or chmod +x manghu.sh && ./manghu.sh)
+# scrollscape.sh — ScrollScape launcher for Linux & macOS
+# Usage: bash scrollscape.sh  (or chmod +x scrollscape.sh && ./scrollscape.sh)
 # =============================================================================
 
 set -euo pipefail
@@ -29,7 +29,7 @@ banner() {
 }
 
 status_box() {
-  echo -e "  ${GRN}  [ OK ]  Manghu is running${R}"
+  echo -e "  ${GRN}  [ OK ]  ScrollScape is running${R}"
   echo
   echo -e "        ${WHT}http://localhost:3000${R}"
   echo
@@ -135,7 +135,7 @@ while true; do
       ;;
     q)
       echo
-      echo -e "  ${CYN}[ .. ]${R}  Stopping Manghu..."
+      echo -e "  ${CYN}[ .. ]${R}  Stopping ScrollScape..."
       docker compose down
       echo
       echo -e "  ${GRN}[ OK ]${R}  Server stopped. Goodbye!"

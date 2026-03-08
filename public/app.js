@@ -1,5 +1,5 @@
-// ============================================================================
-// app.js    Manghu frontend application
+﻿// ============================================================================
+// app.js    ScrollScape frontend application
 //
 // Foundational modules loaded (in order) before this file by index.html:
 //   modules/api.js         api() fetch helper
@@ -20,22 +20,22 @@ const _BASE_THEMES = [
 // Merge any community themes registered in themes.js (loaded before this file)
 const SHOP_THEMES = [..._BASE_THEMES, ...(window.COMMUNITY_THEMES || [])];
 
-function getSpentAP()   { return parseInt(localStorage.getItem('manghu_ap_spent')  || '0', 10); }
-function getBonusAP()   { return parseInt(localStorage.getItem('manghu_ap_bonus')  || '0', 10); }
-function addBonusAP(n)  { localStorage.setItem('manghu_ap_bonus', getBonusAP() + n); }
-function spendAP(n)     { localStorage.setItem('manghu_ap_spent', Math.max(0, getSpentAP() + n)); }
+function getSpentAP()   { return parseInt(localStorage.getItem('scrollscape_ap_spent')  || '0', 10); }
+function getBonusAP()   { return parseInt(localStorage.getItem('scrollscape_ap_bonus')  || '0', 10); }
+function addBonusAP(n)  { localStorage.setItem('scrollscape_ap_bonus', getBonusAP() + n); }
+function spendAP(n)     { localStorage.setItem('scrollscape_ap_spent', Math.max(0, getSpentAP() + n)); }
 function getAvailableAP() { return Math.max(0, achievementManager.unlockedAchievements.size + getBonusAP() - getSpentAP()); }
 
 function getPurchasedThemes() {
-  try { return JSON.parse(localStorage.getItem('manghu_purchased_themes') || '["default"]'); }
+  try { return JSON.parse(localStorage.getItem('scrollscape_purchased_themes') || '["default"]'); }
   catch { return ['default']; }
 }
 function addPurchasedTheme(id) {
   const p = getPurchasedThemes();
-  if (!p.includes(id)) { p.push(id); localStorage.setItem('manghu_purchased_themes', JSON.stringify(p)); }
+  if (!p.includes(id)) { p.push(id); localStorage.setItem('scrollscape_purchased_themes', JSON.stringify(p)); }
 }
-function getActiveTheme() { return localStorage.getItem('manghu_active_theme') || 'default'; }
-function setActiveTheme(id) { localStorage.setItem('manghu_active_theme', id); applyTheme(id); }
+function getActiveTheme() { return localStorage.getItem('scrollscape_active_theme') || 'default'; }
+function setActiveTheme(id) { localStorage.setItem('scrollscape_active_theme', id); applyTheme(id); }
 function applyTheme(id) {
   // Call onRemove for the previously active community theme
   const prevId = document.documentElement.getAttribute('data-color-theme') || '';
@@ -89,16 +89,16 @@ const ACHIEVEMENTS = [
 
 function loadSettings() {
   try {
-    const saved = localStorage.getItem("manghuSettings");
+    const saved = localStorage.getItem("scrollscapeSettings");
     if (saved) state.settings = { ...state.settings, ...JSON.parse(saved) };
 
-    const readChaps = localStorage.getItem("manghuReadChapters");
+    const readChaps = localStorage.getItem("scrollscapeReadChapters");
     if (readChaps) state.readChapters = new Set(JSON.parse(readChaps));
 
-    const flaggedChaps = localStorage.getItem("manghuFlaggedChapters");
+    const flaggedChaps = localStorage.getItem("scrollscapeFlaggedChapters");
     if (flaggedChaps) state.flaggedChapters = new Set(JSON.parse(flaggedChaps));
 
-    const progress = localStorage.getItem("manghuReadingProgress");
+    const progress = localStorage.getItem("scrollscapeReadingProgress");
     if (progress) {
       const p = JSON.parse(progress);
       state.lastReadPages = p.pages || {};
@@ -115,10 +115,10 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem("manghuSettings", JSON.stringify(state.settings));
-  localStorage.setItem("manghuReadChapters", JSON.stringify([...state.readChapters]));
-  localStorage.setItem("manghuFlaggedChapters", JSON.stringify([...state.flaggedChapters]));
-  localStorage.setItem("manghuReadingProgress", JSON.stringify({
+  localStorage.setItem("scrollscapeSettings", JSON.stringify(state.settings));
+  localStorage.setItem("scrollscapeReadChapters", JSON.stringify([...state.readChapters]));
+  localStorage.setItem("scrollscapeFlaggedChapters", JSON.stringify([...state.flaggedChapters]));
+  localStorage.setItem("scrollscapeReadingProgress", JSON.stringify({
     pages: state.lastReadPages,
     chapters: state.lastReadChapter
   }));
@@ -3706,8 +3706,8 @@ function showSettings() {
     switch ((cmd || '').trim().toLowerCase()) {
       case 'cls':
         achievementManager.reset();
-        localStorage.setItem('manghu_ap_bonus', '0');
-        localStorage.setItem('manghu_ap_spent', '0');
+        localStorage.setItem('scrollscape_ap_bonus', '0');
+        localStorage.setItem('scrollscape_ap_spent', '0');
         updateApBadge();
         showToast('Reset complete', 'All AP and achievements cleared.', 'info');
         break;
@@ -4518,9 +4518,9 @@ function bindUI() {
 
 
 
-const CUSTOM_PRESETS_KEY = 'manghu_custom_presets';
+const CUSTOM_PRESETS_KEY = 'scrollscape_custom_presets';
 
-const CUSTOM_ACTIVE_KEY  = 'manghu_active_custom';
+const CUSTOM_ACTIVE_KEY  = 'scrollscape_active_custom';
 
 // Shared callback so initColorPicker can trigger livePreview
 var _cpLivePreviewCb = null;
