@@ -39,37 +39,30 @@ cd /d "%~dp0"
 call :banner
 
 :: ============================================================================
-:: Determine runtime – prefer Docker, fall back to Node.js
+:: Determine runtime – prefer Node.js, fall back to Docker
 :: ============================================================================
 set "NODE_EXE="
 set "SS_PORT=3000"
 
-:: --- Try Docker first -------------------------------------------------------
-where docker >nul 2>&1
-if %ERRORLEVEL% EQU 0 goto :check_docker
-
-echo   !YLW!  [INFO]!R!  Docker not found -- trying Node.js.
-echo.
-
-:: --- Fall back to Node.js ---------------------------------------------------
+:: --- Try Node.js first ------------------------------------------------------
 node --version >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     set "NODE_EXE=node"
     for /f "tokens=*" %%V in ('node --version 2^>^&1') do set "NODEVER=%%V"
-    echo   !BGRN!  [ OK ]!R!  Node.js !NODEVER! found.
-    echo.
     goto :run_node
 )
 
 if exist "%~dp0tools\node\node.exe" (
     set "NODE_EXE=%~dp0tools\node\node.exe"
     for /f "tokens=*" %%V in ('"%~dp0tools\node\node.exe" --version 2^>^&1') do set "NODEVER=%%V"
-    echo   !BGRN!  [ OK ]!R!  Local Node.js !NODEVER! found.
-    echo.
     goto :run_node
 )
 
-call :err "Neither Docker nor Node.js found" "Install Docker: https://docs.docker.com/get-docker/  or Node.js: https://nodejs.org"
+:: --- Fall back to Docker ----------------------------------------------------
+where docker >nul 2>&1
+if %ERRORLEVEL% EQU 0 goto :check_docker
+
+call :err "Neither Node.js nor Docker found" "Install Node.js: https://nodejs.org  or Docker: https://docs.docker.com/get-docker/"
 pause & exit /b 1
 
 :: ============================================================================
