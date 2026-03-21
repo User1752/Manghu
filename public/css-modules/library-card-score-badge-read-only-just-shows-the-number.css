@@ -1,0 +1,18 @@
+/* ============================================================================
+   LIBRARY CARD SCORE BADGE (read-only, just shows the number)
+   ============================================================================ */
+
+.card-score-badge {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f5c518;
+  line-height: 1;
+}
+.card-score-badge-max {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+

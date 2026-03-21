@@ -1,0 +1,55 @@
+/* ============================================================================
+   ZOOM CONTROLS IN READER
+   ============================================================================ */
+.reader-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-zoom {
+  width: 30px;
+  height: 30px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.btn-zoom:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.zoom-level {
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 42px;
+  text-align: center;
+}
+
+/* Page image zoom wrapper */
+.page-zoom-wrap {
+  transition: transform 0.2s ease;
+  transform-origin: center top;
+  display: inline-block;
+}
+
+/* Webtoon zoom wrapper â€” full-width vertical strip */
+.page-zoom-wrap.webtoon-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  gap: 0;
+}
+

@@ -1,0 +1,12 @@
+/* ============================================================================
+   COLOR THEMES (override --primary family)
+   ============================================================================ */
+[data-color-theme="dragonball"] { --primary:#FF6B00; --primary-dark:#CC4400; --primary-light:#FFB800; }
+[data-color-theme="naruto"]     { --primary:#F96E0A; --primary-dark:#bf4e00; --primary-light:#FFB347; }
+[data-color-theme="onepiece"]   { --primary:#C0392B; --primary-dark:#922B21; --primary-light:#E74C3C; }
+[data-color-theme="demonslayer"]{ --primary:#C53030; --primary-dark:#7B1FA2; --primary-light:#E57373; }
+[data-color-theme="aot"]        { --primary:#2E6B5E; --primary-dark:#1A4A40; --primary-light:#4DB6AC; }
+[data-color-theme="jjk"]        { --primary:#6B21A8; --primary-dark:#1A237E; --primary-light:#A78BFA; }
+[data-color-theme="bleach"]     { --primary:#00B4B4; --primary-dark:#007878; --primary-light:#4DEEEE; }
+/* initiald colours are defined in public/themes.js */
+

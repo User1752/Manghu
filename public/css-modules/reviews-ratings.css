@@ -1,0 +1,116 @@
+/* ============================================================================
+   REVIEWS & RATINGS
+   ============================================================================ */
+.reviews-section {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.reviews-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.review-form {
+  margin-bottom: 2rem;
+}
+
+.star-rating {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: var(--bg-tertiary);
+  transition: color 0.15s ease, transform 0.15s ease;
+  line-height: 1;
+}
+
+.star-btn:hover,
+.star-btn.active {
+  color: #FBBF24; /* amber */
+  transform: scale(1.15);
+}
+
+.review-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.review-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btn-submit-review {
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.5rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-submit-review:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(145,63,226,0.4);
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-item {
+  padding: 1rem;
+  background-color: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.review-stars {
+  color: #FBBF24;
+  font-size: 0.95rem;
+}
+
+.review-date {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.review-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+

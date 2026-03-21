@@ -1,0 +1,195 @@
+/* ============================================================================
+   FILTERS SECTION
+   ============================================================================ */
+.filters-section {
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(145, 63, 226, 0.03) 100%);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(145, 63, 226, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
+}
+
+.filters-section:hover {
+  border-color: rgba(145, 63, 226, 0.3);
+  box-shadow: 0 6px 24px rgba(145, 63, 226, 0.15);
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.filters-header h3 {
+  font-size: 1.1rem;
+}
+
+.btn-settings-inline {
+  background-color: transparent;
+  border: 1px solid var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+.btn-settings-inline:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--primary);
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.filter-group:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: rgba(145, 63, 226, 0.3);
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.filter-group > label::before {
+  content: "";
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 2px;
+}
+
+.genre-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.genre-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.genre-chip {
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(34, 34, 34, 0.8) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.genre-chip::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(145, 63, 226, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.genre-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(145, 63, 226, 0.3);
+}
+
+.genre-chip:hover::before {
+  opacity: 1;
+}
+
+.genre-chip.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-color: var(--primary-light);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(145, 63, 226, 0.5);
+  font-weight: 600;
+}
+
+.genre-chip.active::before {
+  opacity: 0;
+}
+
+.status-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.filter-checkbox:hover {
+  background-color: rgba(145, 63, 226, 0.1);
+  border-color: rgba(145, 63, 226, 0.3);
+  transform: translateX(4px);
+}
+
+.filter-checkbox input {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  border-radius: 4px;
+}
+
+.filter-checkbox input:checked {
+  filter: drop-shadow(0 0 4px var(--primary));
+}
+
+.filter-checkbox span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+

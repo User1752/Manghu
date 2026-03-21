@@ -1,0 +1,41 @@
+/* ============================================================================
+   CONTEXT MENU
+   ============================================================================ */
+.context-menu {
+  position: fixed;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  min-width: 250px;
+  overflow: hidden;
+}
+
+.context-menu.hidden {
+  display: none;
+}
+
+.context-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.context-item:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--primary);
+}
+
+.context-divider {
+  height: 1px;
+  background-color: var(--bg-tertiary);
+}
+

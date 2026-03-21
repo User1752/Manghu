@@ -61,68 +61,71 @@ function withTimeout(promise, ms, label = 'source call') {
 }
 
 /**
+ * Higher-order function to encapsulate try-catch blocks for async route handlers.
+ */
+const asyncHandler = (fn) => async (req, res, next) => {
+  try {
+    await fn(req, res, next);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+};
+
+/**
  * @param {import('express').Router} router
  */
 function registerSourceRoutes(router) {
   // ── POST /api/sources/install ──────────────────────────────────────────────
-  router.post('/api/sources/install', async (req, res) => {
-    try {
-      const { id } = req.body || {};
-      const sid    = safeId(id);
-      if (!sid) return res.status(400).json({ error: 'Invalid source ID' });
+  router.post('/api/sources/install', asyncHandler(async (req, res) => {
+    const { id } = req.body || {};
+    const sid    = safeId(id);
+    if (!sid) return res.status(400).json({ error: 'Invalid source ID' });
 
-      const store     = await readStore();
-      const available = await listAvailableSourcesFromRepos(store.repos);
-      const source    = available.find(s => s.id === sid);
-      if (!source) return res.status(404).json({ error: 'Source not found in any repo' });
-      if (source.kind !== 'js') return res.status(400).json({ error: 'Source type not supported' });
-      if (!isSafeUrl(source.codeUrl)) return res.status(400).json({ error: 'Source code URL is not valid' });
+    const store     = await readStore();
+    const available = await listAvailableSourcesFromRepos(store.repos);
+    const source    = available.find(s => s.id === sid);
+    if (!source) return res.status(404).json({ error: 'Source not found in any repo' });
+    if (source.kind !== 'js') return res.status(400).json({ error: 'Source type not supported' });
+    if (!isSafeUrl(source.codeUrl)) return res.status(400).json({ error: 'Source code URL is not valid' });
 
-      const code = await fetchText(source.codeUrl);
-      await fsp.writeFile(sourcePath(sid), code, 'utf8');
+    const code = await fetchText(source.codeUrl);
+    await fsp.writeFile(sourcePath(sid), code, 'utf8');
 
-      // Invalidate stale cached modules.
-      clearSourceCache(sid);
-      _popularAllCache = null;
+    // Invalidate stale cached modules.
+    clearSourceCache(sid);
+    _popularAllCache = null;
 
-      const mod = loadSourceFromFile(sid);
-      store.installedSources[sid] = {
-        id:          sid,
-        name:        mod.meta.name    || source.name,
-        version:     mod.meta.version || source.version,
-        author:      mod.meta.author  || source.author || '',
-        icon:        mod.meta.icon    || source.icon   || '',
-        installedAt: new Date().toISOString(),
-      };
-      await writeStore(store);
-      res.json({ ok: true, installed: store.installedSources[sid] });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
+    const mod = loadSourceFromFile(sid);
+    store.installedSources[sid] = {
+      id:          sid,
+      name:        mod.meta.name    || source.name,
+      version:     mod.meta.version || source.version,
+      author:      mod.meta.author  || source.author || '',
+      icon:        mod.meta.icon    || source.icon   || '',
+      installedAt: new Date().toISOString(),
+    };
+    await writeStore(store);
+    res.json({ ok: true, installed: store.installedSources[sid] });
+  }));
 
   // ── POST /api/sources/uninstall ────────────────────────────────────────────
-  router.post('/api/sources/uninstall', async (req, res) => {
-    try {
-      const { id } = req.body || {};
-      const sid    = safeId(id);
-      if (!sid) return res.status(400).json({ error: 'Invalid source ID' });
+  router.post('/api/sources/uninstall', asyncHandler(async (req, res) => {
+    const { id } = req.body || {};
+    const sid    = safeId(id);
+    if (!sid) return res.status(400).json({ error: 'Invalid source ID' });
 
-      const store = await readStore();
-      delete store.installedSources[sid];
-      await writeStore(store);
+    const store = await readStore();
+    delete store.installedSources[sid];
+    await writeStore(store);
 
-      clearSourceCache(sid);
-      _popularAllCache = null;
+    clearSourceCache(sid);
+    _popularAllCache = null;
 
-      const p = sourcePath(sid);
-      if (fs.existsSync(p)) await fsp.unlink(p);
+    const p = sourcePath(sid);
+    if (fs.existsSync(p)) await fsp.unlink(p);
 
-      res.json({ ok: true });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
+    res.json({ ok: true });
+  }));
 
   // ── POST /api/source/:id/:method ────────────────────────────────────────────
   // Whitelisted methods only — arbitrary method names are rejected.
@@ -132,86 +135,79 @@ function registerSourceRoutes(router) {
     'byGenres', 'authorSearch',
   ]);
 
-  router.post('/api/source/:id/:method', async (req, res) => {
-    try {
-      const { id, method } = req.params;
+  router.post('/api/source/:id/:method', asyncHandler(async (req, res) => {
+    const { id, method } = req.params;
 
-      const sid = safeId(id);
-      if (!sid) return res.status(400).json({ error: 'Invalid source ID' });
-      if (!ALLOWED_METHODS.has(method)) return res.status(400).json({ error: 'Method not supported' });
+    const sid = safeId(id);
+    if (!sid) return res.status(400).json({ error: 'Invalid source ID' });
+    if (!ALLOWED_METHODS.has(method)) return res.status(400).json({ error: 'Method not supported' });
 
-      const mod = loadSourceFromFile(sid);
-      if (typeof mod[method] !== 'function') return res.status(400).json({ error: 'Method not implemented by this source' });
+    const mod = loadSourceFromFile(sid);
+    if (typeof mod[method] !== 'function') return res.status(400).json({ error: 'Method not implemented by this source' });
 
-      const { query, page, mangaId, chapterId, genres, orderBy, authorName } = req.body || {};
+    const { query, page, mangaId, chapterId, genres, orderBy, authorName } = req.body || {};
 
-      let call;
-      switch (method) {
-        case 'search':         call = mod.search(query || '', Number(page) || 1, orderBy || ''); break;
-        case 'mangaDetails':   call = mod.mangaDetails(mangaId   || ''); break;
-        case 'chapters':       call = mod.chapters(mangaId       || ''); break;
-        case 'pages':          call = mod.pages(chapterId        || ''); break;
-        case 'trending':       call = mod.trending(); break;
-        case 'recentlyAdded':  call = mod.recentlyAdded(); break;
-        case 'latestUpdates':  call = mod.latestUpdates(); break;
-        case 'byGenres':       call = mod.byGenres(genres || [], orderBy || ''); break;
-        case 'authorSearch':   call = mod.authorSearch(authorName || ''); break;
-        // No default needed — ALLOWED_METHODS guard above ensures exhaustion.
-      }
-
-      const result = await withTimeout(call, SOURCE_CALL_TIMEOUT, `${sid}.${method}`);
-      res.json(result);
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+    let call;
+    switch (method) {
+      case 'search':         call = mod.search(query || '', Number(page) || 1, orderBy || ''); break;
+      case 'mangaDetails':   call = mod.mangaDetails(mangaId   || ''); break;
+      case 'chapters':       call = mod.chapters(mangaId       || ''); break;
+      case 'pages':          call = mod.pages(chapterId        || ''); break;
+      case 'trending':       call = mod.trending(); break;
+      case 'recentlyAdded':  call = mod.recentlyAdded(); break;
+      case 'latestUpdates':  call = mod.latestUpdates(); break;
+      case 'byGenres':       call = mod.byGenres(genres || [], orderBy || ''); break;
+      case 'authorSearch':   call = mod.authorSearch(authorName || ''); break;
+      // No default needed — ALLOWED_METHODS guard above ensures exhaustion.
     }
-  });
+
+    const result = await withTimeout(call, SOURCE_CALL_TIMEOUT, `${sid}.${method}`);
+    res.json(result);
+  }));
 
   // ── GET /api/popular-all ───────────────────────────────────────────────────
-  router.get('/api/popular-all', async (req, res) => {
-    try {
-      // Serve from cache if still fresh.
-      if (_popularAllCache && Date.now() - _popularAllCache.ts < POPULAR_ALL_TTL) {
-        return res.json(_popularAllCache.data);
-      }
+  router.get('/api/popular-all', asyncHandler(async (req, res) => {
+    // Serve from cache if still fresh.
+    if (_popularAllCache && Date.now() - _popularAllCache.ts < POPULAR_ALL_TTL) {
+      return res.json(_popularAllCache.data);
+    }
 
-      const store     = await readStore();
-      const sourceIds = Object.keys(store.installedSources || {});
-      if (!sourceIds.length) return res.json({ results: [] });
+    const store     = await readStore();
+    const sourceIds = Object.keys(store.installedSources || {});
+    if (!sourceIds.length) return res.json({ results: [] });
 
-      const settled = await Promise.allSettled(
-        sourceIds.map(async (sid) => {
-          const mod = loadSourceFromFile(sid);
-          if (typeof mod.trending !== 'function') return [];
-          const r = await withTimeout(mod.trending(), SOURCE_CALL_TIMEOUT, `${sid}.trending`);
-          return (r.results || []).map(m => ({
-            ...m,
-            sourceId:   sid,
-            sourceName: store.installedSources[sid]?.name || sid,
-          }));
-        })
-      );
+    const settled = await Promise.allSettled(
+      sourceIds.map(async (sid) => {
+        const mod = loadSourceFromFile(sid);
+        if (typeof mod.trending !== 'function') return [];
+        const r = await withTimeout(mod.trending(), SOURCE_CALL_TIMEOUT, `${sid}.trending`);
+        return (r.results || []).map(m => ({
+          ...m,
+          sourceId:   sid,
+          sourceName: store.installedSources[sid]?.name || sid,
+        }));
+      })
+    );
 
-      // Interleave source buckets (zip) then de-duplicate by title.
-      const buckets = settled.filter(s => s.status === 'fulfilled').map(s => s.value);
-      const seen    = new Set();
-      const merged  = [];
-      const maxLen  = Math.max(...buckets.map(b => b.length), 0);
-      for (let i = 0; i < maxLen; i++) {
-        for (const bucket of buckets) {
-          if (i < bucket.length) {
-            const key = (bucket[i].title || '').trim().toLowerCase();
-            if (!seen.has(key)) { seen.add(key); merged.push(bucket[i]); }
-          }
+    // Interleave source buckets (zip) then de-duplicate by title.
+    const buckets = settled.filter(s => s.status === 'fulfilled').map(s => s.value);
+    const seen    = new Set();
+    const merged  = [];
+    const maxLen  = Math.max(...buckets.map(b => b.length), 0);
+    
+    for (let i = 0; i < maxLen; i++) {
+      for (const bucket of buckets) {
+        if (i < bucket.length) {
+          const key = (bucket[i].title || '').trim().toLowerCase();
+          if (!seen.has(key)) { seen.add(key); merged.push(bucket[i]); }
         }
       }
-
-      const response = { results: merged.slice(0, 40) };
-      _popularAllCache = { ts: Date.now(), data: response };
-      res.json(response);
-    } catch (e) {
-      res.status(500).json({ error: e.message });
     }
-  });
+
+    const response = { results: merged.slice(0, 40) };
+    _popularAllCache = { ts: Date.now(), data: response };
+    res.json(response);
+  }));
 }
 
 // Allow other modules (e.g. sourceLoader) to invalidate the public-all cache.

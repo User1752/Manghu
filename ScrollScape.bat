@@ -45,22 +45,29 @@ set "NODE_EXE="
 set "SS_PORT=3000"
 
 :: --- Try Node.js first ------------------------------------------------------
+echo   !BCYN!  [ .. ]!R!  Scanning for Node.js runtime environment...
 node --version >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     set "NODE_EXE=node"
     for /f "tokens=*" %%V in ('node --version 2^>^&1') do set "NODEVER=%%V"
+    echo   !BGRN!  [ OK ]!R!  System Node.js !NODEVER! detected.
     goto :run_node
 )
 
 if exist "%~dp0tools\node\node.exe" (
     set "NODE_EXE=%~dp0tools\node\node.exe"
     for /f "tokens=*" %%V in ('"%~dp0tools\node\node.exe" --version 2^>^&1') do set "NODEVER=%%V"
+    echo   !BGRN!  [ OK ]!R!  Local Node.js !NODEVER! detected in tools\node\.
     goto :run_node
 )
 
 :: --- Fall back to Docker ----------------------------------------------------
+echo   !YLW!  [INFO]!R!  Node.js not found. Checking if Docker CLI is available...
 where docker >nul 2>&1
-if %ERRORLEVEL% EQU 0 goto :check_docker
+if %ERRORLEVEL% EQU 0 (
+    echo   !BGRN!  [ OK ]!R!  Docker runtime located.
+    goto :check_docker
+)
 
 call :err "Neither Node.js nor Docker found" "Install Node.js: https://nodejs.org  or Docker: https://docs.docker.com/get-docker/"
 pause & exit /b 1
@@ -68,10 +75,15 @@ pause & exit /b 1
 :: ============================================================================
 :run_node
 :: ============================================================================
+echo.
+echo   !BCYN!  [ .. ]!R!  Reserving localhost network port...
 call :find_port
+echo   !BGRN!  [ OK ]!R!  Port !SS_PORT! secured for server.
+echo   !BCYN!  [ .. ]!R!  Booting Node.js backend daemon...
 call :start_node
 if not defined NODE_PID (
-    call :err "Failed to start server" "See above for errors."
+    echo.
+    call :err "Failed to start server daemon" "See logs for details."
     pause & exit /b 1
 )
 call :wait_port !SS_PORT!
@@ -81,30 +93,34 @@ start "" "http://localhost:!SS_PORT!"
 
 :node_menu
 echo.
-echo   !GRY!  +-----------------------------------------------+!R!
-echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Restart ^& refresh                        !GRY!^|!R!
-echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit                                     !GRY!^|!R!
-echo   !GRY!  +-----------------------------------------------+!R!
-choice /c RQ /n >nul
+echo   !GRY!  +-------------------------------------------------------+!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Restart ^& refresh                                !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit                                             !GRY!^|!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
+powershell -NoProfile -Command "while($true){$k=[Console]::ReadKey($true).KeyChar.ToString().ToUpper(); if($k -eq 'R'){exit 1}; if($k -eq 'Q'){exit 2}}"
 if errorlevel 2 goto :node_quit
 if errorlevel 1 goto :node_restart
 
 :node_restart
 cls
-echo.
-echo   !BCYN!  Restarting...!R!
-echo.
+call :banner
+echo   !BCYN!  [ .. ]!R!  Terminating old server process...
 taskkill /pid !NODE_PID! /f >nul 2>&1
 timeout /t 1 /nobreak >nul
+echo   !BGRN!  [ OK ]!R!  Process terminated.
+echo   !BCYN!  [ .. ]!R!  Reserving localhost network port...
 call :find_port
+echo   !BGRN!  [ OK ]!R!  Port !SS_PORT! secured for new instance.
+echo   !BCYN!  [ .. ]!R!  Booting new Node.js daemon...
 call :start_node
 if not defined NODE_PID (
+    echo.
     call :err "Failed to restart" ""
     goto :node_menu
 )
 call :wait_port !SS_PORT!
 echo.
-echo   !BGRN!  Done!!R!
+call :status_box
 goto :node_menu
 
 :node_quit
@@ -126,9 +142,12 @@ echo.
 
 :run_docker
 cd /d "%~dp0docker"
+echo.
+echo   !BCYN!  [ .. ]!R!  Spinning up Docker containers...
 call :docker_spin "up -d --build"
 if %ERRORLEVEL% NEQ 0 (
-    call :err "Failed to start" "Run:  docker compose up -d --build  to see full output."
+    echo.
+    call :err "Docker Compose failed to start" "Run locally: docker compose up -d --build"
     pause & exit /b 1
 )
 cd /d "%~dp0"
@@ -138,23 +157,27 @@ start "" "http://localhost:!SS_PORT!"
 
 :docker_menu
 echo.
-echo   !GRY!  +-----------------------------------------------+!R!
-echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Rebuild ^& refresh                        !GRY!^|!R!
-echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit                                     !GRY!^|!R!
-echo   !GRY!  +-----------------------------------------------+!R!
-choice /c RQ /n >nul
+echo   !GRY!  +-------------------------------------------------------+!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!R!R!  !WHT!Rebuild ^& refresh                                !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!Q!R!  !WHT!Quit                                             !GRY!^|!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
+powershell -NoProfile -Command "while($true){$k=[Console]::ReadKey($true).KeyChar.ToString().ToUpper(); if($k -eq 'R'){exit 1}; if($k -eq 'Q'){exit 2}}"
 if errorlevel 2 goto :docker_quit
 if errorlevel 1 goto :docker_rebuild
 
 :docker_rebuild
 cls
+call :banner
+echo   !BCYN!  [ .. ]!R!  Rebuilding and restarting Docker containers...
 echo.
 call :docker_spin "up -d --build"
 if %ERRORLEVEL% NEQ 0 (
-    call :err "Rebuild failed" "Run:  docker compose up -d --build  to see full output."
+    echo.
+    call :err "Rebuild failed" "Run locally: docker compose up -d --build"
+) else (
+    echo.
+    call :status_box
 )
-echo.
-echo   !BGRN!  Done!!R!
 goto :docker_menu
 
 :docker_quit
@@ -256,33 +279,34 @@ goto :_wploop
 cls
 echo.
 echo   !GRY!  +=======================================================+!R!
-echo   !GRY!  ^|!R!                                             !GRY!^|!R!
-echo   !GRY!  ^|!R!    !BOLD!!BPUR!           ___ !R!           !GRY!^|!R!
-echo   !GRY!  ^|!R!    !BOLD!!BPUR!          / __^|   / __^| !R!!GRY!^|!R!
-echo   !GRY!  ^|!R!    !BOLD!!PUR!          \__ \  ^| (__!R!    !GRY!^|!R!
-echo   !GRY!  ^|!R!    !DIM!!PUR!          ^|___/   \___^| !R!  !GRY!^|!R!
-echo   !GRY!  ^|!R!                                             !GRY!^|!R!
-echo   !GRY!  ^|!R!!DIM! Manga Reader . Node.js / Docker . localhost:3000 !R!!GRY!^|!R!
+echo   !GRY!  ^|!R!                                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!    !BOLD!!BPUR!_____  _____!R!                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!/ ____^|/ ____^|!R!      !BOLD!ScrollScape!R!                     !GRY!^|!R!
+echo   !GRY!  ^|!R!  !BOLD!!PUR!^| (___ ^| (___!R!        !DIM!Manga Reader!R!                    !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!PUR!\___ \ \___ \!R!                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!   !DIM!!PUR!____^) ^|____^) ^|!R!      !DIM!Node.js ^& Docker!R!                !GRY!^|!R!
+echo   !GRY!  ^|!R!  !DIM!!PUR!^|_____/^|_____/!R!       !DIM!Localhost Server!R!                !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                       !GRY!^|!R!
 echo   !GRY!  +=======================================================+!R!
 echo.
 goto :eof
 
 ::  Status box
 :status_box
-echo   !GRY!  +-----------------------------------------------+!R!
-echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!ScrollScape is running!R!              !GRY!^|!R!
-echo   !GRY!  ^|!R!                                                 !GRY!^|!R!
-echo   !GRY!  ^|!R!       !BOLD!!WHT!http://localhost:!SS_PORT!!R!                   !GRY!^|!R!
-echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
+echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!ScrollScape is running!R!                     !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!       !BOLD!!WHT!http://localhost:!SS_PORT!!R!                           !GRY!^|!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
 echo.
 goto :eof
 
 ::  Error box
 :err
-echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
 echo   !GRY!  ^|!R!    !BRED![ ERR ]!R!  !BOLD!%~1!R!
 if not "%~2"=="" echo   !GRY!  ^|!R!    !DIM!          %~2!R!
-echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
 echo.
 goto :eof
 

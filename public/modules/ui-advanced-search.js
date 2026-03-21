@@ -1,0 +1,236 @@
+// ============================================================================
+// ADVANCED SEARCH
+// ============================================================================
+
+const ADV_PAGE_SIZE = 50;
+const ADV_MAX_API_PAGES = 20; // safety limit per user-page
+
+/**
+ * Apply client-side filters to a batch of results.
+ * Returns only items that pass all active filter criteria.
+ */
+function _applyAdvFilters(results, query, selectedGenres, publicationStatus, contentRating) {
+  let out = results;
+  if (query && selectedGenres.length > 0) {
+    const q = query.toLowerCase();
+    out = out.filter(m => (m.title || "").toLowerCase().includes(q));
+  }
+  if (publicationStatus) {
+    out = out.filter(m => m.status?.toLowerCase() === publicationStatus.toLowerCase());
+  }
+  if (contentRating) {
+    out = out.filter(m => m.contentRating?.toLowerCase() === contentRating.toLowerCase());
+  }
+  return out;
+}
+
+async function advancedSearch(page = 1) {
+  const query   = $("advancedSearchInput").value.trim();
+  const orderBy = $("advancedOrderBy").value;
+  const publicationStatus = $("advancedPublicationStatus")?.value || "";
+  const contentRating = $("advancedContentRating")?.value || "";
+  const format = $("advancedFormat")?.value || "";
+  const selectedGenres = Array.from(document.querySelectorAll('#genreGrid input[type="checkbox"]:checked')).map(cb => cb.value);
+
+  // "local" is not a plugin source — fall back to the dropdown value or first installed source
+  if (!state.currentSourceId || !state.installedSources[state.currentSourceId]) {
+    const sel = $("advancedSourceSelect");
+    const installed = Object.keys(state.installedSources);
+    const fallback = (sel && state.installedSources[sel.value]) ? sel.value : installed[0];
+    if (!fallback) {
+      $("advancedSearchStatus").textContent = "Select a source first.";
+      return;
+    }
+    state.currentSourceId = fallback;
+    if (sel) sel.value = fallback;
+    const mainSel = $("sourceSelect");
+    if (mainSel) mainSel.value = fallback;
+  }
+
+  state.advSearchPage = page;
+  $("advancedSearchStatus").textContent = "Searching...";
+
+  // Determine if any client-side filter is active
+  const needsClientFilter = !!(publicationStatus || contentRating || (query && selectedGenres.length > 0));
+
+  // ── Fast path: no client filtering, use native API pagination ────────────
+  if (!needsClientFilter) {
+    state._advAcc = null; // invalidate accumulator cache
+    try {
+      let result;
+      if (selectedGenres.length > 0) {
+        result = await api(`/api/source/${state.currentSourceId}/byGenres`, {
+          method: "POST",
+          body: JSON.stringify({ genres: selectedGenres, orderBy })
+        });
+      } else {
+        result = await api(`/api/source/${state.currentSourceId}/search`, {
+          method: "POST",
+          body: JSON.stringify({ query: query || "", page, orderBy })
+        });
+      }
+      const results = result.results || [];
+      const hasNextPage = result.hasNextPage || false;
+      state.advSearchHasNextPage = hasNextPage;
+      const resultsDiv = $("advancedResults");
+      if (!results.length) {
+        resultsDiv.innerHTML = `<div class="muted">No results found</div>`;
+        $("advancedSearchStatus").textContent = "0 result(s) found";
+        renderPagination("advancedSearchPagination", page, hasNextPage, "advSearchGoToPage");
+        return;
+      }
+      renderMangaGrid(resultsDiv, results);
+      $("advancedSearchStatus").textContent = `${results.length} result(s) found — Page ${page}`;
+      renderPagination("advancedSearchPagination", page, hasNextPage, "advSearchGoToPage");
+    } catch (e) {
+      $("advancedSearchStatus").textContent = `Error: ${e.message}`;
+      renderPagination("advancedSearchPagination", page, false, "advSearchGoToPage");
+    }
+    return;
+  }
+
+  // ── Fill-up path: accumulate filtered results across API pages ────────────
+  // Cache key: invalidate accumulator when source or any filter changes.
+  const filterKey = [state.currentSourceId, query, selectedGenres.join(','), publicationStatus, contentRating, orderBy].join('|');
+
+  // Reset accumulator when filters change or navigating back to page 1
+  if (!state._advAcc || state._advAcc.filterKey !== filterKey || page === 1) {
+    state._advAcc = { results: [], apiPage: 0, hasMore: true, filterKey };
+  }
+
+  const acc = state._advAcc;
+  const target = page * ADV_PAGE_SIZE;
+  let fetchError = null;
+
+  // Keep fetching API pages until we have enough filtered results (or run out)
+  while (acc.results.length < target && acc.hasMore && acc.apiPage < ADV_MAX_API_PAGES) {
+    acc.apiPage++;
+    try {
+      let result;
+      if (selectedGenres.length > 0) {
+        result = await api(`/api/source/${state.currentSourceId}/byGenres`, {
+          method: "POST",
+          body: JSON.stringify({ genres: selectedGenres, orderBy })
+        });
+        acc.hasMore = false; // byGenres returns all results in one shot
+      } else {
+        result = await api(`/api/source/${state.currentSourceId}/search`, {
+          method: "POST",
+          body: JSON.stringify({ query: query || "", page: acc.apiPage, orderBy })
+        });
+        acc.hasMore = result.hasNextPage || false;
+      }
+      const batch = _applyAdvFilters(result.results || [], query, selectedGenres, publicationStatus, contentRating);
+      acc.results.push(...batch);
+    } catch (e) {
+      fetchError = e;
+      break;
+    }
+  }
+
+  if (fetchError && acc.results.length === 0) {
+    $("advancedSearchStatus").textContent = `Error: ${fetchError.message}`;
+    renderPagination("advancedSearchPagination", page, false, "advSearchGoToPage");
+    return;
+  }
+
+  const pageResults = acc.results.slice((page - 1) * ADV_PAGE_SIZE, page * ADV_PAGE_SIZE);
+  const hasNextPage = acc.hasMore || acc.results.length > page * ADV_PAGE_SIZE;
+  state.advSearchHasNextPage = hasNextPage;
+
+  const resultsDiv = $("advancedResults");
+  if (!pageResults.length) {
+    resultsDiv.innerHTML = `<div class="muted">No results found</div>`;
+    $("advancedSearchStatus").textContent = "0 result(s) found";
+    renderPagination("advancedSearchPagination", page, hasNextPage, "advSearchGoToPage");
+    return;
+  }
+  renderMangaGrid(resultsDiv, pageResults);
+  $("advancedSearchStatus").textContent = `${pageResults.length} result(s) found — Page ${page}`;
+  renderPagination("advancedSearchPagination", page, hasNextPage, "advSearchGoToPage");
+}
+
+async function randomManga() {
+  const sourceIds = Object.keys(state.installedSources).filter(id => id !== 'local');
+  const statusEl = $('advancedSearchStatus');
+
+  // Build a combined pool: library items (any source) + online search from a random source/page
+  let pool = [];
+
+  // Add library
+  for (const m of (state.favorites || [])) {
+    if (m.sourceId && m.sourceId !== 'local') pool.push({ id: m.id, sourceId: m.sourceId });
+  }
+
+  // Add online results from a random installed source on a random page
+  if (sourceIds.length > 0) {
+    const src = sourceIds[Math.floor(Math.random() * sourceIds.length)];
+    const pg  = Math.floor(Math.random() * 15) + 1;
+    if (statusEl) statusEl.textContent = 'Finding random manga...';
+    try {
+      const res = await api(`/api/source/${src}/search`, {
+        method: 'POST',
+        body: JSON.stringify({ query: '', page: pg })
+      });
+      for (const m of (res.results || [])) pool.push({ id: m.id, sourceId: src });
+    } catch (_) { /* use library only if network fails */ }
+  }
+
+  if (!pool.length) {
+    if (statusEl) statusEl.textContent = 'No manga found. Install a source or add manga to your library.';
+    return;
+  }
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const prevSource = state.currentSourceId;
+  state.currentSourceId = pick.sourceId;
+  state._fromRandom = true;
+  if (statusEl) statusEl.textContent = '';
+  try {
+    await loadMangaDetails(pick.id, 'random');
+  } catch (e) {
+    state.currentSourceId = prevSource;
+    state._fromRandom = false;
+    if (statusEl) statusEl.textContent = `Error: ${e.message}`;
+  }
+}
+
+function initAdvancedFilters() {
+  // Auto-refresh on dropdown changes
+  const dropdownFilters = [
+    "advancedOrderBy",
+    "advancedPublicationStatus",
+    "advancedContentRating",
+    "advancedFormat"
+  ];
+
+  dropdownFilters.forEach(id => {
+    const el = $(id);
+    if (el) {
+      el.onchange = () => {
+        const view = document.querySelector("#view-advanced-search");
+        if (view && !view.classList.contains("hidden")) advancedSearch();
+      };
+    }
+  });
+
+  // Genre checkboxes — debounced auto-search
+  const genreGrid = $("genreGrid");
+  if (genreGrid) {
+    genreGrid.addEventListener("change", () => {
+      const view = document.querySelector("#view-advanced-search");
+      if (view && !view.classList.contains("hidden")) advancedSearch();
+    });
+  }
+
+  // Clear genres button
+  const clearBtn = $("clearGenresBtn");
+  if (clearBtn) {
+    clearBtn.onclick = () => {
+      document.querySelectorAll('#genreGrid input[type="checkbox"]').forEach(cb => cb.checked = false);
+      const view = document.querySelector("#view-advanced-search");
+      if (view && !view.classList.contains("hidden")) advancedSearch();
+    };
+  }
+}
+

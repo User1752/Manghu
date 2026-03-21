@@ -1,0 +1,131 @@
+/* ============================================================================
+   INTEGRITY REPORT
+   ============================================================================ */
+.integrity-report {
+  margin: 1rem 1.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.integrity-good {
+  border-color: var(--success);
+  background: linear-gradient(135deg, rgba(0, 208, 132, 0.1) 0%, rgba(0, 208, 132, 0.05) 100%);
+}
+
+.integrity-warning {
+  border-color: var(--warning);
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%);
+}
+
+.integrity-error {
+  border-color: var(--danger);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+.integrity-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.integrity-icon {
+  font-size: 1.3rem;
+}
+
+.integrity-header strong {
+  flex: 1;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.btn-close-report {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.3rem;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-close-report:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.integrity-body {
+  padding: 1.5rem;
+}
+
+.integrity-section {
+  margin-bottom: 1rem;
+}
+
+.integrity-section:last-child {
+  margin-bottom: 0;
+}
+
+.integrity-section div {
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.integrity-issues div {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.integrity-warnings div {
+  color: var(--warning);
+}
+
+.integrity-info div {
+  color: var(--text-secondary);
+}
+
+.integrity-mangaupdates {
+  background: rgba(145, 63, 226, 0.08);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+  margin-bottom: 1.5rem;
+}
+
+.integrity-mangaupdates div {
+  color: var(--text-primary);
+}
+
+.integrity-mangaupdates a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.integrity-mangaupdates a:hover {
+  color: var(--primary-light);
+  text-decoration: underline;
+}
+

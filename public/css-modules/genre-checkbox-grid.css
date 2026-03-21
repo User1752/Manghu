@@ -1,0 +1,112 @@
+/* ============================================================================
+   GENRE CHECKBOX GRID
+   ============================================================================ */
+.genre-filter-group {
+  margin-top: 1.25rem;
+}
+
+.genre-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.genre-filter-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.genre-clear-btn {
+  background: transparent;
+  border: 1px solid var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.genre-clear-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.genre-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.45rem 1rem;
+}
+
+.genre-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.genre-check:hover {
+  background: var(--bg-tertiary);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.genre-check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.genre-check input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M2 6l3 3 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.genre-check span {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.genre-check em {
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.genre-check input[type="checkbox"]:checked ~ span {
+  color: var(--primary-light);
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .genre-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .genre-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+

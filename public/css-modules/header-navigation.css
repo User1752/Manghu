@@ -1,0 +1,73 @@
+/* ============================================================================
+   HEADER & NAVIGATION
+   ============================================================================ */
+.topbar {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(145, 63, 226, 0.15);
+}
+
+.container-top {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.nav-menu {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.nav-link:hover {
+  color: white;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.nav-link.active {
+  color: white;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-bottom: 2px solid white;
+}
+
+.btn-settings-header {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: white;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn-settings-header:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: white;
+}
+

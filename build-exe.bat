@@ -133,12 +133,12 @@ if not exist "dist\ScrollScape.exe" (
 )
 
 echo.
-echo   !GRY!  +-----------------------------------------------+!R!
-echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!dist\ScrollScape.exe is ready!!R!             !GRY!^|!R!
-echo   !GRY!  ^|!R!                                                 !GRY!^|!R!
-echo   !GRY!  ^|!R!    !WHT!Copy it anywhere and double-click it.!R!    !GRY!^|!R!
-echo   !GRY!  ^|!R!    !DIM!No Docker or Node.js needed on the target.!R! !GRY!^|!R!
-echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
+echo   !GRY!  ^|!R!    !BGRN![ OK ]!R!  !BOLD!dist\ScrollScape.exe is ready.!R!             !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!    !WHT!Copy it anywhere and double-click it.!R!              !GRY!^|!R!
+echo   !GRY!  ^|!R!    !DIM!No Docker or Node.js needed on the target.!R!         !GRY!^|!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
 echo.
 goto :end
 
@@ -198,21 +198,23 @@ goto :eof
 cls
 echo.
 echo   !GRY!  +=======================================================+!R!
-echo   !GRY!  ^|!R!                                                           !GRY!^|!R!
-echo   !GRY!  ^|!R!    !BOLD!!BPUR! ^|V^|   /\   ^|\^|   (^~   ^|-^|   ^| ^|!R!             !GRY!^|!R!
-echo   !GRY!  ^|!R!    !BOLD!!PUR! ^|  ^|  /--\  ^| \^|  (_    ^|_^|   ^| ^|!R!             !GRY!^|!R!
-echo   !GRY!  ^|!R!    !DIM!!PUR! ^|  ^| /    \ ^|  \^|   _^)  ^| ^|  \__/!R!               !GRY!^|!R!
-echo   !GRY!  ^|!R!                                                           !GRY!^|!R!
-echo   !GRY!  ^|!R!    !DIM!EXE Builder  .  pkg  .  Docker!R!                      !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!    !BOLD!!BPUR!_____  _____!R!                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!BPUR!/ ____^|/ ____^|!R!      !BOLD!ScrollScape!R!                     !GRY!^|!R!
+echo   !GRY!  ^|!R!  !BOLD!!PUR!^| (___ ^| (___!R!        !DIM!EXE Builder!R!                     !GRY!^|!R!
+echo   !GRY!  ^|!R!   !BOLD!!PUR!\___ \ \___ \!R!                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!   !DIM!!PUR!____^) ^|____^) ^|!R!      !DIM!EXE Builder . pkg . Docker!R!      !GRY!^|!R!
+echo   !GRY!  ^|!R!  !DIM!!PUR!^|_____/^|_____/!R!                                       !GRY!^|!R!
+echo   !GRY!  ^|!R!                                                       !GRY!^|!R!
 echo   !GRY!  +=======================================================+!R!
 echo.
 goto :eof
 
 :err
-echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
 echo   !GRY!  ^|!R!    !BRED![ ERR ]!R!  !BOLD!%~1!R!
 if not "%~2"=="" echo   !GRY!  ^|!R!             !DIM!%~2!R!
-echo   !GRY!  +-----------------------------------------------+!R!
+echo   !GRY!  +-------------------------------------------------------+!R!
 echo.
 goto :eof
 

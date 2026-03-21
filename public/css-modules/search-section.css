@@ -1,0 +1,120 @@
+/* ============================================================================
+   SEARCH SECTION
+   ============================================================================ */
+.search-section {
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, rgba(145, 63, 226, 0.1) 0%, rgba(145, 63, 226, 0.05) 100%);
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid rgba(145, 63, 226, 0.2);
+}
+
+.search-container h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  text-shadow: 0 2px 8px rgba(145, 63, 226, 0.3);
+}
+
+.search-form {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.search-form .cs-wrapper,
+.search-form select,
+.search-form input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-form button:not(.cs-trigger) {
+  flex: 0 0 auto;
+}
+
+.form-control {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.85rem 1.2rem;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(22, 21, 29, 0.8) 100%);
+  border: 2px solid rgba(145, 63, 226, 0.2);
+  border-radius: 8px;
+  color: #f0f0f0;
+  font-size: 0.95rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+}
+
+.form-control option {
+  background: #1a1820;
+  color: #f0f0f0;
+  padding: 0.5rem;
+  font-weight: 500;
+}
+
+.form-control option:checked {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: white;
+}
+
+.form-control:hover {
+  border-color: rgba(145, 63, 226, 0.4);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(22, 21, 29, 0.95) 100%);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 16px rgba(145, 63, 226, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, var(--bg-dark) 0%, rgba(13, 11, 14, 0.95) 100%);
+  transform: translateY(-1px);
+}
+
+.btn-search {
+  padding: 0.85rem 2.5rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(145, 63, 226, 0.4);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.3px;
+}
+
+.btn-search::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-search:hover::before {
+  left: 100%;
+}
+
+.btn-search:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(145, 63, 226, 0.5);
+}
+
+.search-status {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(145, 63, 226, 0.1);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  min-height: 20px;
+}
+

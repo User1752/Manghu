@@ -23,78 +23,89 @@
 const { readStore, writeStore } = require('../store');
 
 /**
+ * Higher-order function to encapsulate try-catch blocks for async route handlers.
+ * 
+ * @param {Function} fn 
+ */
+const asyncHandler = (fn) => async (req, res, next) => {
+  try {
+    await fn(req, res, next);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+};
+
+/**
  * @param {import('express').Router} router
  */
 function registerAnalyticsRoutes(router) {
   // ── GET /api/analytics ────────────────────────────────────────────────────
-  router.get('/api/analytics', async (_req, res) => {
-    try {
-      const store = await readStore();
+  router.get('/api/analytics', asyncHandler(async (_req, res) => {
+    const store = await readStore();
 
-      // Compute reading-status distribution from the status map.
-      const dist = { reading: 0, completed: 0, on_hold: 0, plan_to_read: 0, dropped: 0 };
-      for (const s of Object.values(store.readingStatus)) {
-        if (dist[s.status] !== undefined) dist[s.status]++;
-      }
-
-      // Single pass over store.reviews: collect latest ratings + count total review entries.
-      let ratingSum = 0, ratingCount = 0, totalReviews = 0;
-      for (const arr of Object.values(store.reviews)) {
-        totalReviews += arr.length;
-        const r = arr[0]?.rating;
-        if (typeof r === 'number' && r > 0) { ratingSum += r; ratingCount++; }
-      }
-      const meanScore = ratingCount
-        ? Math.round((ratingSum / ratingCount) * 100) / 100
-        : null;
-
-      res.json({
-        analytics:          store.analytics,
-        statusDistribution: dist,
-        totalFavorites:     store.favorites.length,
-        totalReviews,
-        totalLists:         store.customLists.length,
-        meanScore,
-      });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+    // Compute reading-status distribution from the status map.
+    const dist = { reading: 0, completed: 0, on_hold: 0, plan_to_read: 0, dropped: 0 };
+    for (const s of Object.values(store.readingStatus)) {
+      if (dist[s.status] !== undefined) dist[s.status]++;
     }
-  });
+
+    // Single pass over store.reviews: collect latest ratings + count total review entries.
+    let ratingSum = 0, ratingCount = 0, totalReviews = 0;
+    for (const arr of Object.values(store.reviews)) {
+      totalReviews += arr.length;
+      const r = arr[0]?.rating;
+      if (typeof r === 'number' && r > 0) { ratingSum += r; ratingCount++; }
+    }
+    
+    const meanScore = ratingCount
+      ? Math.round((ratingSum / ratingCount) * 100) / 100
+      : null;
+
+    res.json({
+      analytics:          store.analytics,
+      statusDistribution: dist,
+      totalFavorites:     store.favorites.length,
+      totalReviews,
+      totalLists:         store.customLists.length,
+      meanScore,
+    });
+  }));
 
   // ── POST /api/analytics/session ───────────────────────────────────────────
   // Called when a reading session ends; `duration` is in minutes.
-  router.post('/api/analytics/session', async (req, res) => {
-    try {
-      const { mangaId, chapterId, duration } = req.body || {};
-      const safeMid = String(mangaId   ?? '').slice(0, 200);
-      const safeCid = String(chapterId ?? '').slice(0, 200);
+  router.post('/api/analytics/session', asyncHandler(async (req, res) => {
+    const { mangaId, chapterId, duration } = req.body || {};
+    const safeMid = String(mangaId   ?? '').slice(0, 200);
+    const safeCid = String(chapterId ?? '').slice(0, 200);
 
-      const store = await readStore();
-      const a     = store.analytics;
+    const store = await readStore();
+    const a     = store.analytics;
 
-      // Clamp duration: max 1440 min (24 h).
-      const mins = Math.min(1440, Math.max(0, Number(duration) || 0));
-      a.totalTimeSpent    = (a.totalTimeSpent    || 0) + mins;
-      a.totalChaptersRead = (a.totalChaptersRead || 0) + 1;
+    // Clamp duration: max 1440 min (24 h).
+    const mins = Math.min(1440, Math.max(0, Number(duration) || 0));
+    a.totalTimeSpent    = (a.totalTimeSpent    || 0) + mins;
+    a.totalChaptersRead = (a.totalChaptersRead || 0) + 1;
 
-      // Daily streak: increment if the last read was yesterday; reset if older.
-      const todayStr     = new Date().toDateString();
-      const yesterdayStr = new Date(Date.now() - 86_400_000).toDateString();
-      if (a.lastReadDate !== todayStr) {
-        a.dailyStreak  = a.lastReadDate === yesterdayStr ? (a.dailyStreak || 0) + 1 : 1;
-        a.lastReadDate = todayStr;
+    // Daily streak: increment if the last read was yesterday; reset if older.
+    const todayStr     = new Date().toDateString();
+    const yesterdayStr = new Date(Date.now() - 86_400_000).toDateString();
+    
+    if (a.lastReadDate !== todayStr) {
+      if (a.lastReadDate === yesterdayStr) {
+        a.dailyStreak = (a.dailyStreak || 0) + 1;
+      } else {
+        a.dailyStreak = 1;
       }
-
-      a.readingSessions = a.readingSessions || [];
-      a.readingSessions.unshift({ mangaId: safeMid, chapterId: safeCid, duration: mins, date: new Date().toISOString() });
-      a.readingSessions = a.readingSessions.slice(0, 200);
-
-      await writeStore(store);
-      res.json({ ok: true, analytics: store.analytics });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+      a.lastReadDate = todayStr;
     }
-  });
+
+    a.readingSessions = a.readingSessions || [];
+    a.readingSessions.unshift({ mangaId: safeMid, chapterId: safeCid, duration: mins, date: new Date().toISOString() });
+    a.readingSessions = a.readingSessions.slice(0, 200);
+
+    await writeStore(store);
+    res.json({ ok: true, analytics: store.analytics });
+  }));
 }
 
 module.exports = { registerAnalyticsRoutes };

@@ -1,0 +1,16 @@
+/* ============================================================================
+   SIDEBAR AP BADGE
+   ============================================================================ */
+.sidebar-ap-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}
+

@@ -1,0 +1,51 @@
+/* ============================================================================
+   MANGA DETAIL PAGE RATING WIDGET
+   ============================================================================ */
+
+.detail-rating-wrap {
+  margin-top: 1rem;
+}
+
+.detail-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.detail-rating-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-width: 3.2rem;
+}
+
+.detail-rating-btns {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.detail-rating-current {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f5c518;
+  margin-left: 0.2rem;
+}
+.detail-rating-max {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.detail-rating-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.detail-rating-clear:hover { opacity: 1; color: #e87272; }
+

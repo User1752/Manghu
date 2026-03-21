@@ -1,0 +1,41 @@
+/* ============================================================================
+   RESPONSIVE ADDITIONS
+   ============================================================================ */
+@media (max-width: 768px) {
+  .status-selector-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .status-select {
+    max-width: none;
+    width: 100%;
+  }
+
+  .analytics-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lists-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .list-detail-header {
+    flex-direction: column;
+  }
+
+  .reader-controls {
+    display: none; /* hide zoom on small screens; keyboard +/- still works */
+  }
+
+  .library-controls {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+}
+

@@ -1,0 +1,16 @@
+/* ============================================================================
+   LIBRARY CONTROLS + STATUS FILTER
+   ============================================================================ */
+.library-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.form-control-sm {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  min-width: 130px;
+  flex: initial;
+}
+

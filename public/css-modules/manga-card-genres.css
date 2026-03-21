@@ -1,0 +1,27 @@
+/* ============================================================================
+   MANGA CARD GENRES
+   ============================================================================ */
+.manga-card-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+}
+
+.manga-card-genre {
+  font-size: 0.62rem;
+  padding: 0.1rem 0.4rem;
+  background: rgba(145, 63, 226, 0.18);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 80px;
+  text-overflow: ellipsis;
+}
+
+[data-theme="light"] .manga-card-genre {
+  background: rgba(145, 63, 226, 0.12);
+  color: var(--primary);
+}
+

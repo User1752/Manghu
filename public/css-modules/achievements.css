@@ -1,0 +1,62 @@
+/* ============================================================================
+   ACHIEVEMENTS
+   ============================================================================ */
+.achievement-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.achievement-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.achievement-item.earned {
+  background: rgba(145,63,226,0.08);
+  border-color: rgba(145,63,226,0.3);
+}
+
+.achievement-item.locked {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+.achievement-emoji {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.achievement-info h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.achievement-info p {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.achievement-item.earned .achievement-info h4 {
+  color: var(--primary);
+}
+

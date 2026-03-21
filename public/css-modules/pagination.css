@@ -1,0 +1,216 @@
+/* ============================================================================
+   PAGINATION
+   ============================================================================ */
+.pagination-container {
+  margin: 3rem 0 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--bg-secondary);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--bg-tertiary);
+}
+
+.pagination-btn {
+  padding: 0.6rem 1.2rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.pagination-btn:disabled,
+.pagination-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-numbers {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pagination-number {
+  min-width: 40px;
+  height: 40px;
+  padding: 0.5rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-number:hover {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.pagination-number.active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-color: var(--primary);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(145, 63, 226, 0.3);
+}
+
+.pagination-ellipsis {
+  color: var(--text-secondary);
+  padding: 0 0.5rem;
+  font-weight: bold;
+}
+
+.btn-continue {
+  background: linear-gradient(135deg, var(--success) 0%, #00a866 100%);
+}
+
+.btn-continue:hover:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(0, 208, 132, 0.4);
+}
+
+@media (max-width: 768px) {
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .pagination-btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .pagination-number {
+    min-width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination {
+    gap: 0.3rem;
+    padding: 0.5rem;
+  }
+
+  .pagination-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .pagination-number {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .pagination-ellipsis {
+    padding: 0 0.3rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* ============================================================================
+   LIGHT MODE THEME
+   Applied via [data-theme="light"] on <html>
+   ============================================================================ */
+[data-theme="light"] {
+  --bg-dark: #F5F5F7;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E8E8EE;
+  --text-primary: #1A1A2E;
+  --text-secondary: #555577;
+  --border-color: #CCCCDD;
+}
+
+[data-theme="light"] body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .sidebar {
+  background-color: #FFFFFF;
+  border-right-color: #E0E0EC;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .manga-detail-section,
+[data-theme="light"] .chapters-section,
+[data-theme="light"] .manga-card,
+[data-theme="light"] .library-card,
+[data-theme="light"] .stat-card,
+[data-theme="light"] .settings-content,
+[data-theme="light"] .advanced-filters-section {
+  background-color: #FFFFFF;
+  border-color: #E0E0EC;
+}
+
+[data-theme="light"] .form-control,
+[data-theme="light"] .input {
+  background-color: #F0F0F8;
+  border-color: #DDDDE8;
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .form-control:focus,
+[data-theme="light"] .input:focus {
+  background-color: #FFFFFF;
+}
+
+[data-theme="light"] .chapter-item:hover {
+  background-color: #F5F5FA;
+}
+
+[data-theme="light"] .reader {
+  background-color: #E8E8F0;
+}
+
+[data-theme="light"] .reader-content {
+  background-color: #E8E8F0;
+}
+
+[data-theme="light"] .context-menu {
+  background-color: #FFFFFF;
+  border-color: #E0E0EC;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .genre-check {
+  border-color: rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .genre-check:hover {
+  background: var(--bg-tertiary);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .genre-check input[type="checkbox"] {
+  border-color: rgba(0, 0, 0, 0.35);
+  background: transparent;
+}
+

@@ -1,0 +1,14 @@
+/* ============================================================================
+   UTILITIES
+   ============================================================================ */
+.muted {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 2rem;
+  font-style: italic;
+}
+
+.hidden {
+  display: none !important;
+}
+

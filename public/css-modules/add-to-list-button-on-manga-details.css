@@ -1,0 +1,19 @@
+/* ============================================================================
+   ADD TO LIST BUTTON (on manga details)
+   ============================================================================ */
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(145,63,226,0.1);
+  transform: translateY(-2px);
+}
+
